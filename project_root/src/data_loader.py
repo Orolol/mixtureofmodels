@@ -13,8 +13,10 @@ def load_datasets(dataset_configs):
         
         # Process the dataset to extract relevant information
         processed_dataset = []
-        for item in dataset:
-            print(f"Processing item: {item['id']}")
+        for i, item in enumerate(dataset):
+            if i >= 5:  # Process only the first 5 items
+                break
+            print(f"Processing item {i+1}: {item['id']}")
             conversation = item['conversations']
             instruction = next(msg['value'] for msg in conversation if msg['from'] == 'human')
             response = next(msg['value'] for msg in conversation if msg['from'] == 'gpt')
