@@ -1,8 +1,10 @@
 from datasets import load_dataset
+from huggingface_hub import login
 import json
 
 def load_datasets(dataset_configs):
     datasets = []
+    login(token="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")
     for config in dataset_configs:
         if config['path'] == 'BAAI/Infinity-Instruct':
             dataset = load_dataset('BAAI/Infinity-Instruct', '3M', split='train')
@@ -12,16 +14,20 @@ def load_datasets(dataset_configs):
         # Process the dataset to extract relevant information
         processed_dataset = []
         for item in dataset:
-            conversation = json.loads(item['conversations'])
+            print(f"Processing item: {item['id']}")
+            conversation = item['conversations']
             instruction = next(msg['value'] for msg in conversation if msg['from'] == 'human')
             response = next(msg['value'] for msg in conversation if msg['from'] == 'gpt')
+            
+            abilities = item['label']['ability_en'] if type(item['label']) == dict else ""
+            category = item['label']['cate_ability_en'][0] if type(item['label']) == dict else ""
             
             processed_item = {
                 'id': item['id'],
                 'instruction': instruction,
                 'response': response,
-                'abilities': item['label']['ability_en'],
-                'category': item['label']['cate_ability_en'][0],
+                'abilities': abilities,
+                'category': category,
                 'language': item['langdetect'],
                 'source': item['source']
             }
