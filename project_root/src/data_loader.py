@@ -4,11 +4,14 @@ import json
 def load_datasets(dataset_configs):
     datasets = []
     for config in dataset_configs:
-        dataset = load_dataset(config['path'])
+        if config['path'] == 'BAAI/Infinity-Instruct':
+            dataset = load_dataset('BAAI/Infinity-Instruct', '3M', split='train')
+        else:
+            dataset = load_dataset(config['path'])
         
         # Process the dataset to extract relevant information
         processed_dataset = []
-        for item in dataset['train']:  # Assuming 'train' split, adjust if needed
+        for item in dataset:
             conversation = json.loads(item['conversations'])
             instruction = next(msg['value'] for msg in conversation if msg['from'] == 'human')
             response = next(msg['value'] for msg in conversation if msg['from'] == 'gpt')
