@@ -1,0 +1,35 @@
+datasets:
+  - name: "dataset1"
+    path: "huggingface/dataset1"
+  - name: "dataset2"
+    path: "huggingface/dataset2"
+
+models:
+  - name: "model1_temp0.7"
+    path: "path/to/model1.gguf"
+    parameters:
+      temperature: 0.7
+      max_length: 512
+      top_p: 0.9
+  - name: "model1_temp1.0"
+    path: "path/to/model1.gguf"
+    parameters:
+      temperature: 1.0
+      max_length: 512
+      top_p: 0.9
+  - name: "model2_temp0.5"
+    path: "path/to/model2.gguf"
+    parameters:
+      temperature: 0.5
+      max_length: 256
+      top_p: 0.8
+
+evaluator_model:
+  name: "evaluator"
+  path: "path/to/evaluator.gguf"
+  parameters:
+    temperature: 0.2
+    max_length: 128
+
+global_parameters:
+  batch_size: 32
