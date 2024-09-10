@@ -23,17 +23,23 @@ def main():
     # Initialiser le constructeur de dataset
     dataset_builder = DatasetBuilder()
 
-    # Pour chaque instruction dans les datasets
+    # Pour chaque dataset chargé
     for dataset_name, dataset in datasets:
-        for instruction in dataset['train']:  # Assuming 'train' split, adjust if needed
+        # Ajouter les entrées du dataset chargé au dataset final
+        dataset_builder.add_entries_from_loaded_dataset(dataset)
+
+        # Pour chaque instruction dans le dataset
+        for item in dataset:
+            instruction = item['instruction']
+            
             # Obtenir les réponses de chaque modèle
-            responses = {model.name: model.generate(instruction) for model in models}
+            model_responses = {model.name: model.generate(instruction) for model in models}
 
-            # Évaluer chaque réponse
-            scores = {name: evaluator.evaluate(response) for name, response in responses.items()}
+            # Évaluer chaque réponse de modèle
+            model_scores = {name: evaluator.evaluate(response) for name, response in model_responses.items()}
 
-            # Ajouter à notre dataset final
-            dataset_builder.add_entry(instruction, responses, scores)
+            # TODO: Decide how to handle and store model responses and scores
+            # You might want to add these to the dataset_builder or store them separately
 
     # Sauvegarder le dataset final
     dataset_builder.save_dataset("../output/final_dataset.csv")
