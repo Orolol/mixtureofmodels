@@ -45,8 +45,11 @@ def main():
                 response_id = str(uuid.uuid4())
                 dataset_builder.add_response(response_id, question_id, i, response)
 
+                # Vérifier s'il y a une réponse existante pour cette question
+                existing_response = item.get('response', '')
+
                 # Évaluer la réponse du modèle
-                score = evaluator.evaluate(instruction, response)
+                score = evaluator.evaluate(instruction, response, existing_response)
                 evaluation_id = str(uuid.uuid4())
                 dataset_builder.add_evaluation(evaluation_id, response_id, score)
 
