@@ -46,7 +46,7 @@ def main():
                 dataset_builder.add_response(response_id, question_id, i, response)
 
                 # Évaluer la réponse du modèle
-                score = evaluator.evaluate(response)
+                score = evaluator.evaluate(instruction, response)
                 evaluation_id = str(uuid.uuid4())
                 dataset_builder.add_evaluation(evaluation_id, response_id, score)
 

@@ -20,8 +20,8 @@ class Evaluator(BaseModel):
         )
         return response['choices'][0]['message']['content']
 
-    def evaluate(self, response):
-        prompt = f"Evaluate the following response and provide a score between 0 and 10, where 0 is the worst and 10 is the best. Only return the numeric score:\n\nResponse: {response}\n\nScore:"
+    def evaluate(self, instruction, response):
+        prompt = f"Evaluate the following response to the given instruction. Provide a score between 0 and 10, where 0 is the worst and 10 is the best. Only return the numeric score:\n\nInstruction: {instruction}\n\nResponse: {response}\n\nScore:"
         evaluation = self.generate(prompt)
         try:
             score = float(evaluation.strip())
