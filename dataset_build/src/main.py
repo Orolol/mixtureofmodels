@@ -1,4 +1,5 @@
 import yaml
+import uuid
 from dataset_build.src.data_loader import load_datasets
 from dataset_build.src.model_loader import load_models
 from dataset_build.src.evaluator import Evaluator
@@ -23,6 +24,10 @@ def main():
     # Initialiser le constructeur de dataset
     dataset_builder = DatasetBuilder()
 
+    # Ajouter les modèles au dataset_builder
+    for i, model in enumerate(models):
+        dataset_builder.add_model(i, model.name, model.parameters)
+
     # Pour chaque dataset chargé
     for dataset_name, dataset in datasets:
         # Ajouter les entrées du dataset chargé au dataset final
@@ -30,19 +35,22 @@ def main():
 
         # Pour chaque instruction dans le dataset
         for item in dataset:
+            question_id = item['id']
             instruction = item['instruction']
             
             # Obtenir les réponses de chaque modèle
-            model_responses = {model.name: model.generate(instruction) for model in models}
+            for i, model in enumerate(models):
+                response = model.generate(instruction)
+                response_id = str(uuid.uuid4())
+                dataset_builder.add_response(response_id, question_id, i, response)
 
-            # Évaluer chaque réponse de modèle
-            model_scores = {name: evaluator.evaluate(response) for name, response in model_responses.items()}
+                # Évaluer la réponse du modèle
+                score = evaluator.evaluate(response)
+                evaluation_id = str(uuid.uuid4())
+                dataset_builder.add_evaluation(evaluation_id, response_id, score)
 
-            # TODO: Decide how to handle and store model responses and scores
-            # You might want to add these to the dataset_builder or store them separately
-
-    # Sauvegarder le dataset final
-    dataset_builder.save_dataset("dataset_build/output/dataset.csv")
+    # Sauvegarder les datasets
+    dataset_builder.save_datasets("dataset_build/output/dataset")
 
 if __name__ == "__main__":
     main()
