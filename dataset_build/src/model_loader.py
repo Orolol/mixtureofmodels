@@ -1,15 +1,14 @@
 from llama_cpp import Llama
+from base_model import BaseModel
 
-class ModelWrapper:
-    def __init__(self, name, path, parameters):
-        self.name = name
-        self.model = Llama.from_pretrained(
-            repo_id=name,
+class ModelWrapper(BaseModel):
+    def load_model(self, path):
+        return Llama.from_pretrained(
+            repo_id=self.name,
             filename=path,
             verbose=True,
             n_ctx=512,
         )
-        self.parameters = parameters
 
     def generate(self, instruction):
         outputs = self.model.generate(instruction, **self.parameters)
