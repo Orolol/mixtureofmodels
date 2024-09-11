@@ -2,12 +2,13 @@ from llama_cpp import Llama
 from dataset_build.src.base_model import BaseModel
 
 class ModelWrapper(BaseModel):
-    def load_model(self, path):
-        return Llama(
-            model_path=path,
-            chat_format="llama-2",
-            n_ctx=512,
-            verbose=True
+    def load_model(self, path, name):
+        return Llama.from_pretrained(
+            repo_id=name,
+            filename=path,
+            verbose=True,
+            n_ctx=4096,
+            n_gpu_layers=200
         )
 
     def generate(self, instruction):

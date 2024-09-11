@@ -10,22 +10,27 @@ def load_datasets(dataset_configs):
     login(token=get_huggingface_token())
     for config in dataset_configs:
         if config['path'] == 'BAAI/Infinity-Instruct':
-            dataset = load_dataset('BAAI/Infinity-Instruct', '3M', split='train')
+            dataset = load_dataset('BAAI/Infinity-Instruct', '0625', split='train')
         else:
             dataset = load_dataset(config['path'])
         
         # Process the dataset to extract relevant information
         processed_dataset = []
         for i, item in enumerate(dataset):
-            if i >= 5:  # Process only the first 5 items
+            if i >= 50:  # Process only the first 5 items
                 break
             print(f"Processing item {i+1}: {item['id']}")
+            
             conversation = item['conversations']
             instruction = next(msg['value'] for msg in conversation if msg['from'] == 'human')
             response = next(msg['value'] for msg in conversation if msg['from'] == 'gpt')
             
             abilities = item['label']['ability_en'] if type(item['label']) == dict else ""
             category = item['label']['cate_ability_en'][0] if type(item['label']) == dict else ""
+            
+            
+            print("Item labels", item['label'])
+            print(abilities, category)
             
             processed_item = {
                 'id': item['id'],

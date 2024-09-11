@@ -6,8 +6,9 @@ class Evaluator(BaseModel):
         return Llama.from_pretrained(
             repo_id=name,
             filename=path,
-            verbose=True,
-            n_ctx=512,
+            verbose=False,
+            n_ctx=8192,
+            n_gpu_layers=200
         )
 
     def generate(self, instruction):
