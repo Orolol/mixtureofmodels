@@ -18,8 +18,8 @@ models:
 
 
 evaluator_model:
-  name: "google/gemma-2-2b-it-gguf"
-  path: "google/gemma-2-2b-it-gguf"
+  name: "microsoft/Phi-3-mini-4k-instruct-gguf"
+  path: "Phi-3-mini-4k-instruct-q4.gguf"
   parameters:
     temperature: 0.2
     max_length: 128

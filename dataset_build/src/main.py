@@ -1,12 +1,12 @@
 import yaml
-from data_loader import load_datasets
-from model_loader import load_models
-from evaluator import Evaluator
-from dataset_builder import DatasetBuilder
+from dataset_build.src.data_loader import load_datasets
+from dataset_build.src.model_loader import load_models
+from dataset_build.src.evaluator import Evaluator
+from dataset_build.src.dataset_builder import DatasetBuilder
 
 def main():
     # Charger la configuration
-    with open('../config/config.yaml', 'r') as file:
+    with open('dataset_build/config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
     # Charger les datasets

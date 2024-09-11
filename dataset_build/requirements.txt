@@ -3,3 +3,5 @@ datasets
 pandas
 pyyaml
 torch
+python-dotenv
+llama-cpp-python

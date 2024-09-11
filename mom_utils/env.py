@@ -7,4 +7,5 @@ def load_env_variables():
 
 def get_huggingface_token():
     """Retrieve the Hugging Face token from environment variables."""
-    return os.getenv('HUGGINGFACE_TOKEN')
+    load_dotenv(dotenv_path="../.env")
+    return os.getenv('HUGGINGFACE_ACCESS_KEY')

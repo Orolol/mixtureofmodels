@@ -1,11 +1,12 @@
 from datasets import load_dataset
 from huggingface_hub import login
 import json
-from env import load_env_variables, get_huggingface_token
+from mom_utils.env import load_env_variables, get_huggingface_token
 
 def load_datasets(dataset_configs):
     datasets = []
     load_env_variables()
+    print("Token", get_huggingface_token())
     login(token=get_huggingface_token())
     for config in dataset_configs:
         if config['path'] == 'BAAI/Infinity-Instruct':
