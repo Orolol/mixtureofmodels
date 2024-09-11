@@ -1,10 +1,12 @@
 from datasets import load_dataset
 from huggingface_hub import login
 import json
+from env import load_env_variables, get_huggingface_token
 
 def load_datasets(dataset_configs):
     datasets = []
-    login(token="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")
+    load_env_variables()
+    login(token=get_huggingface_token())
     for config in dataset_configs:
         if config['path'] == 'BAAI/Infinity-Instruct':
             dataset = load_dataset('BAAI/Infinity-Instruct', '3M', split='train')
