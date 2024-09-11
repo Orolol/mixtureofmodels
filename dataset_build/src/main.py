@@ -42,7 +42,7 @@ def main():
             # You might want to add these to the dataset_builder or store them separately
 
     # Sauvegarder le dataset final
-    dataset_builder.save_dataset("../output/final_dataset.csv")
+    dataset_builder.save_dataset("dataset_build/output/dataset.csv")
 
 if __name__ == "__main__":
     main()
