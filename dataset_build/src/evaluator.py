@@ -1,10 +1,10 @@
 from llama_cpp import Llama
-from base_model import BaseModel
+from dataset_build.src.base_model import BaseModel
 
 class Evaluator(BaseModel):
-    def load_model(self, path):
+    def load_model(self, path, name):
         return Llama.from_pretrained(
-            repo_id=self.name,
+            repo_id=name,
             filename=path,
             verbose=True,
             n_ctx=512,
