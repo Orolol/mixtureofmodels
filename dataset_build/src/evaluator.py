@@ -1,19 +1,18 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from llama_cpp import Llama
 from base_model import BaseModel
 
 class Evaluator(BaseModel):
     def load_model(self, path):
-        self.tokenizer = AutoTokenizer.from_pretrained(path)
-        return AutoModelForCausalLM.from_pretrained(path)
+        return Llama.from_pretrained(
+            repo_id=self.name,
+            filename=path,
+            verbose=True,
+            n_ctx=512,
+        )
 
     def generate(self, instruction):
-        inputs = self.tokenizer(instruction, return_tensors="pt")
-        outputs = self.model.generate(
-            inputs.input_ids,
-            max_length=self.parameters.get('max_length', 128),
-            temperature=self.parameters.get('temperature', 0.2),
-        )
-        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        outputs = self.model.generate(instruction, **self.parameters)
+        return self.model.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
     def evaluate(self, response):
         prompt = f"Evaluate the following response: {response}\nScore (0-10):"
