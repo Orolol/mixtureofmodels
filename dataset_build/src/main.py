@@ -5,8 +5,18 @@ from dataset_build.src.data_loader import load_datasets
 from dataset_build.src.model_loader import load_models
 from dataset_build.src.evaluator import Evaluator
 from dataset_build.src.dataset_builder import DatasetBuilder
+import torch
+
+
 
 def main():
+    
+    print("Checku if CUDA is available")
+    print(torch.cuda.is_available())
+    print(torch.cuda.device_count())
+    print(torch.cuda.get_device_name(0))
+
+    
     # Charger la configuration
     with open('dataset_build/config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
