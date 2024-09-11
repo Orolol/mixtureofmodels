@@ -3,11 +3,11 @@ from dataset_build.src.base_model import BaseModel
 
 class Evaluator(BaseModel):
     def load_model(self, path, name):
-        return Llama(
-            model_path=path,
-            chat_format="llama-2",
+        return Llama.from_pretrained(
+            repo_id=name,
+            filename=path,
+            verbose=True,
             n_ctx=512,
-            verbose=True
         )
 
     def generate(self, instruction):
