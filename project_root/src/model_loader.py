@@ -1,10 +1,11 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+
 class ModelWrapper:
     def __init__(self, name, path, parameters):
         self.name = name
-        self.model = AutoModelForCausalLM.from_pretrained(path)
-        self.tokenizer = AutoTokenizer.from_pretrained(path)
+        self.model = AutoModelForCausalLM.from_pretrained(name, gguf_file=path)
+        self.tokenizer = AutoTokenizer.from_pretrained(name, gguf_file=path)
         self.parameters = parameters
 
     def generate(self, instruction):
