@@ -1,5 +1,5 @@
 from llama_cpp import Llama
-from base_model import BaseModel
+from dataset_build.src.base_model import BaseModel
 
 class ModelWrapper(BaseModel):
     def load_model(self, path):
