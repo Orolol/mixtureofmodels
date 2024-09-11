@@ -1,5 +1,6 @@
 import yaml
 import uuid
+import pandas as pd
 from dataset_build.src.data_loader import load_datasets
 from dataset_build.src.model_loader import load_models
 from dataset_build.src.evaluator import Evaluator
