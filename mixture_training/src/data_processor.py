@@ -2,14 +2,17 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
+from nltk.sentiment import SentimentIntensityAnalyzer
+from textstat import flesch_kincaid_grade, flesch_reading_ease
 import nltk
 import re
 
 # Download necessary NLTK data
 nltk.download('punkt')
 nltk.download('stopwords')
+nltk.download('vader_lexicon')
 
 def load_data(file_path):
     return pd.read_csv(file_path)
@@ -40,11 +43,26 @@ def extract_features(df):
     # Length features
     df['instruction_length'] = df['instruction'].apply(len)
     df['word_count'] = df['instruction'].apply(lambda x: len(x.split()))
+    df['sentence_count'] = df['instruction'].apply(lambda x: len(sent_tokenize(x)))
+    
+    # Sentiment features
+    sia = SentimentIntensityAnalyzer()
+    df['sentiment_scores'] = df['instruction'].apply(lambda x: sia.polarity_scores(x))
+    df['sentiment_compound'] = df['sentiment_scores'].apply(lambda x: x['compound'])
+    
+    # Readability features
+    df['flesch_kincaid_grade'] = df['instruction'].apply(flesch_kincaid_grade)
+    df['flesch_reading_ease'] = df['instruction'].apply(flesch_reading_ease)
+    
+    # Additional text statistics
+    df['avg_word_length'] = df['instruction'].apply(lambda x: np.mean([len(word) for word in x.split()]))
+    df['unique_word_count'] = df['instruction'].apply(lambda x: len(set(x.split())))
     
     # Combine all features
     feature_matrix = np.hstack((
         tfidf_features.toarray(),
-        df[['instruction_length', 'word_count']].values
+        df[['instruction_length', 'word_count', 'sentence_count', 'sentiment_compound',
+            'flesch_kincaid_grade', 'flesch_reading_ease', 'avg_word_length', 'unique_word_count']].values
     ))
     
     return feature_matrix, df['category']
