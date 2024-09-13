@@ -12,13 +12,16 @@ def main():
     print(torch.cuda.is_available())
     print(torch.cuda.device_count())
     print(torch.cuda.get_device_name(0))
+    
+    
+    MAX_ITER = 500
 
     # Charger la configuration
     with open('dataset_build/config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
     # Charger les datasets
-    datasets = load_datasets(config['datasets'])
+    datasets = load_datasets(config['datasets'], MAX_ITER)
 
     # Initialiser le constructeur de dataset
     dataset_builder = DatasetBuilder()
@@ -44,6 +47,7 @@ def main():
 
             # Pour chaque instruction dans le dataset
             for item in dataset:
+                print(f"Processing item {i+1}: {item['id']}/{MAX_ITER}", end="\r", flush=True)
                 question_id = item['id']
                 instruction = item['instruction']
                 
@@ -63,7 +67,8 @@ def main():
                           config['evaluator_model']['parameters'])
 
     # Évaluer toutes les réponses
-    for _, row in dataset_builder.responses_df.iterrows():
+    for i, row in dataset_builder.responses_df.iterrows():
+        print(f"Evaluating item {i+1}: {i}/{len(dataset_builder.responses_df)}", end="\r", flush=True)
         question_id = row['question_id']
         response_id = row['response_id']
         response = row['response']
