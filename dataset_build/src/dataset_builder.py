@@ -19,15 +19,18 @@ class DatasetBuilder:
         self.dataset_df = pd.concat([self.dataset_df, new_entry], ignore_index=True)
 
     def add_entries_from_loaded_dataset(self, loaded_dataset):
-        for item in loaded_dataset:
-            self.add_entry(
-                item['id'],
-                item['instruction'],
-                item['abilities'],
-                item['category'],
-                item['language'],
-                item['source']
-            )
+        new_entries = pd.DataFrame([
+            {
+                'question_id': item['id'],
+                'instruction': item['instruction'],
+                'abilities': item['abilities'],
+                'category': item['category'],
+                'language': item['language'],
+                'source': item['source']
+            }
+            for item in loaded_dataset
+        ])
+        self.dataset_df = pd.concat([self.dataset_df, new_entries], ignore_index=True)
 
     def add_model(self, model_id, model_name, model_parameters):
         new_model = pd.DataFrame({
