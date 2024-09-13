@@ -22,6 +22,7 @@ class SimpleNN(nn.Module):
 class InstructionClassifier:
     def __init__(self, input_size, hidden_size=64, num_classes=10):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {self.device}")
         self.model = SimpleNN(input_size, hidden_size, num_classes).to(self.device)
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(self.model.parameters())
