@@ -14,7 +14,7 @@ def main():
     print(torch.cuda.device_count())
     print(torch.cuda.get_device_name(0))
     
-    MAX_ITER = 500
+    MAX_ITER = 50000
     OUTPUT_DIR = "dataset_build/output"
     
     # Create output directory if it doesn't exist
@@ -56,15 +56,17 @@ def main():
         dataset_builder.add_model(i, model.name, model.parameters)
 
     # Load evaluator
-    print("Loading evaluator")
+    print("Loading evaluator", flush=True)
     evaluator = Evaluator(config['evaluator_model']['name'],
                           config['evaluator_model']['path'],
                           config['evaluator_model']['parameters'])
 
     # Process instructions without answers or evaluations
-    for _, row in dataset_builder.dataset_df.iterrows():
+    for i, row in dataset_builder.dataset_df.iterrows():
         question_id = row['question_id']
         instruction = row['instruction']
+        
+        print(f"Processing instruction {i+1}/{len(dataset_builder.dataset_df)} : {question_id}", end="\r", flush=True)
 
         for i, model in enumerate(models):
             # Check if response exists
@@ -74,7 +76,7 @@ def main():
             ]
 
             if existing_response.empty:
-                print(f"Generating response for question {question_id} with model {model.name}")
+                print(f"Generating response for question {question_id} with model {model.name}", flush=True)
                 response = model.generate(instruction)
                 response_id = str(uuid.uuid4())
                 dataset_builder.add_response(response_id, question_id, i, response)
@@ -93,7 +95,7 @@ def main():
                 ]
 
                 if existing_evaluation.empty:
-                    print(f"Evaluating response for question {question_id} with model {model.name}")
+                    print(f"Evaluating response for question {question_id} with model {model.name}", flush=True)
                     response = existing_response['response'].iloc[0]
                     score = evaluator.evaluate(instruction, response)
                     evaluation_id = str(uuid.uuid4())
