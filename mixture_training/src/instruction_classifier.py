@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 
 class ImprovedNN(nn.Module):
-    def __init__(self, input_size, hidden_sizes, num_classes, dropout_rate=0.5):
+    def __init__(self, input_size, hidden_sizes, num_classes, dropout_rate=0.3):
         super(ImprovedNN, self).__init__()
         self.layers = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
@@ -30,19 +30,19 @@ class ImprovedNN(nn.Module):
         for i, (layer, bn, dropout) in enumerate(zip(self.layers[:-1], self.batch_norms, self.dropouts)):
             x = layer(x)
             x = bn(x)
-            x = nn.ReLU()(x)
+            x = nn.LeakyReLU(0.1)(x)
             x = dropout(x)
         x = self.layers[-1](x)
         return x
 
 class InstructionClassifier:
-    def __init__(self, input_size, hidden_sizes=[128, 64, 32], num_classes=10):
+    def __init__(self, input_size, hidden_sizes=[256, 128, 64], num_classes=20):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         self.model = ImprovedNN(input_size, hidden_sizes, num_classes).to(self.device)
-        self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=1e-5)
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+        self.criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+        self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001, weight_decay=1e-4)
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10, eta_min=1e-6)
         self.label_encoder = LabelEncoder()
         
     def train(self, features, labels, num_epochs=200, batch_size=64, validation_split=0.2, patience=20):

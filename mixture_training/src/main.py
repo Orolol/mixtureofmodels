@@ -38,8 +38,13 @@ def main():
     print("Data split")
     # Train Instruction Classifier
     
-    instruction_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[256, 128, 64], num_classes=len(np.unique(y_train)))
-    instruction_classifier.train(X_train, y_train, num_epochs=1000, batch_size=128)
+    instruction_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
+    instruction_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
+    
+    # Evaluate the model
+    y_pred = instruction_classifier.predict(X_test)
+    accuracy = np.mean(y_pred == y_test)
+    print(f"Test accuracy: {accuracy:.4f}")
     
     
 

@@ -39,7 +39,7 @@ def extract_features(df):
     
     # TF-IDF features
     print("Fitting TF-IDF")
-    tfidf = TfidfVectorizer(max_features=1000)
+    tfidf = TfidfVectorizer(max_features=2000, ngram_range=(1, 2))
     tfidf_features = tfidf.fit_transform(df['processed_instruction'])
     
     # Length features
