@@ -16,6 +16,7 @@ def main():
     
     MAX_ITER = 50000
     OUTPUT_DIR = "dataset_build/output"
+    BATCH_SIZE = 100  # Number of instructions to process in each batch
     
     # Create output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -47,13 +48,8 @@ def main():
     if os.path.exists(evaluations_file):
         dataset_builder.evaluations_df = pd.read_csv(evaluations_file)
 
-    # Load models
+    # Load model configurations
     model_configs = config['models']
-    models = load_models(model_configs)
-
-    # Add models to dataset_builder
-    for i, model in enumerate(models):
-        dataset_builder.add_model(i, model.name, model.parameters)
 
     # Load evaluator
     print("Loading evaluator", flush=True)
@@ -61,48 +57,60 @@ def main():
                           config['evaluator_model']['path'],
                           config['evaluator_model']['parameters'])
 
-    # Process instructions without answers or evaluations
-    for i, row in dataset_builder.dataset_df.iterrows():
-        question_id = row['question_id']
-        instruction = row['instruction']
-        
-        print(f"Processing instruction {i+1}/{len(dataset_builder.dataset_df)} : {question_id}", end="\r", flush=True)
+    # Process instructions in batches
+    for start_idx in range(0, len(dataset_builder.dataset_df), BATCH_SIZE):
+        end_idx = min(start_idx + BATCH_SIZE, len(dataset_builder.dataset_df))
+        batch_df = dataset_builder.dataset_df.iloc[start_idx:end_idx]
 
-        for i, model in enumerate(models):
-            # Check if response exists
-            existing_response = dataset_builder.responses_df[
-                (dataset_builder.responses_df['question_id'] == question_id) &
-                (dataset_builder.responses_df['model_id'] == i)
-            ]
+        print(f"Processing batch {start_idx//BATCH_SIZE + 1}", flush=True)
 
-            if existing_response.empty:
-                print(f"Generating response for question {question_id} with model {model.name}", flush=True)
-                response = model.generate(instruction)
-                response_id = str(uuid.uuid4())
-                dataset_builder.add_response(response_id, question_id, i, response)
-                dataset_builder.responses_df.to_csv(responses_file, index=False)
+        for model_idx, model_config in enumerate(model_configs):
+            print(f"Loading model: {model_config['name']}", flush=True)
+            model = load_models([model_config])[0]
+            dataset_builder.add_model(model_idx, model.name, model.parameters)
 
-                # Evaluate the response
-                score = evaluator.evaluate(instruction, response)
-                evaluation_id = str(uuid.uuid4())
-                dataset_builder.add_evaluation(evaluation_id, response_id, score)
-                dataset_builder.evaluations_df.to_csv(evaluations_file, index=False)
-            else:
-                response_id = existing_response['response_id'].iloc[0]
-                # Check if evaluation exists
-                existing_evaluation = dataset_builder.evaluations_df[
-                    dataset_builder.evaluations_df['response_id'] == response_id
+            for _, row in batch_df.iterrows():
+                question_id = row['question_id']
+                instruction = row['instruction']
+
+                # Check if response exists
+                existing_response = dataset_builder.responses_df[
+                    (dataset_builder.responses_df['question_id'] == question_id) &
+                    (dataset_builder.responses_df['model_id'] == model_idx)
                 ]
 
-                if existing_evaluation.empty:
-                    print(f"Evaluating response for question {question_id} with model {model.name}", flush=True)
-                    response = existing_response['response'].iloc[0]
+                if existing_response.empty:
+                    print(f"Generating response for question {question_id} with model {model.name}", flush=True)
+                    response = model.generate(instruction)
+                    response_id = str(uuid.uuid4())
+                    dataset_builder.add_response(response_id, question_id, model_idx, response)
+                    dataset_builder.responses_df.to_csv(responses_file, index=False)
+
+                    # Evaluate the response
                     score = evaluator.evaluate(instruction, response)
                     evaluation_id = str(uuid.uuid4())
                     dataset_builder.add_evaluation(evaluation_id, response_id, score)
                     dataset_builder.evaluations_df.to_csv(evaluations_file, index=False)
+                else:
+                    response_id = existing_response['response_id'].iloc[0]
+                    # Check if evaluation exists
+                    existing_evaluation = dataset_builder.evaluations_df[
+                        dataset_builder.evaluations_df['response_id'] == response_id
+                    ]
 
-        # Save progress after each instruction
+                    if existing_evaluation.empty:
+                        print(f"Evaluating response for question {question_id} with model {model.name}", flush=True)
+                        response = existing_response['response'].iloc[0]
+                        score = evaluator.evaluate(instruction, response)
+                        evaluation_id = str(uuid.uuid4())
+                        dataset_builder.add_evaluation(evaluation_id, response_id, score)
+                        dataset_builder.evaluations_df.to_csv(evaluations_file, index=False)
+
+            # Unload the model to free up memory
+            del model
+            torch.cuda.empty_cache()
+
+        # Save progress after each batch
         dataset_builder.save_datasets(f"{OUTPUT_DIR}/dataset")
 
     # Print statistics
