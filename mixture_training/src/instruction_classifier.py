@@ -21,7 +21,8 @@ class SimpleNN(nn.Module):
 
 class InstructionClassifier:
     def __init__(self, input_size, hidden_size=64, num_classes=10):
-        self.model = SimpleNN(input_size, hidden_size, num_classes)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = SimpleNN(input_size, hidden_size, num_classes).to(self.device)
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(self.model.parameters())
         self.label_encoder = LabelEncoder()
@@ -32,15 +33,15 @@ class InstructionClassifier:
             features, labels, test_size=validation_split, random_state=42
         )
         
-        train_features = torch.FloatTensor(train_features)
-        val_features = torch.FloatTensor(val_features)
+        train_features = torch.FloatTensor(train_features).to(self.device)
+        val_features = torch.FloatTensor(val_features).to(self.device)
         
         self.label_encoder.fit(labels)
         encoded_train_labels = self.label_encoder.transform(train_labels)
         encoded_val_labels = self.label_encoder.transform(val_labels)
         
-        train_labels = torch.LongTensor(encoded_train_labels)
-        val_labels = torch.LongTensor(encoded_val_labels)
+        train_labels = torch.LongTensor(encoded_train_labels).to(self.device)
+        val_labels = torch.LongTensor(encoded_val_labels).to(self.device)
         
         best_val_loss = float('inf')
         epochs_no_improve = 0
@@ -79,10 +80,10 @@ class InstructionClassifier:
     def predict(self, features):
         self.model.eval()
         with torch.no_grad():
-            features = torch.FloatTensor(features)
+            features = torch.FloatTensor(features).to(self.device)
             outputs = self.model(features)
             probabilities = torch.softmax(outputs, dim=1)
-        return probabilities.numpy()
+        return probabilities.cpu().numpy()
     
     def predict_class(self, features):
         probabilities = self.predict(features)
