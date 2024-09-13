@@ -1,5 +1,6 @@
 from mixture_training.src.data_processor import load_data, preprocess_data, split_data
 from mixture_training.src.instruction_classifier import InstructionClassifier
+from mixture_training.src.xgb_classifier import XGBInstructionClassifier
 from mixture_training.src.model_recommender import ModelRecommender
 from mixture_training.src.moe_controller import MoEController
 from mixture_training.src.model_executor import ModelExecutor
@@ -36,20 +37,30 @@ def main():
 
     X_train, X_test, y_train, y_test = split_data(features, labels=labels)
     print("Data split")
-    # Train Instruction Classifier
-    
-    instruction_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
-    instruction_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
-    
-    # Evaluate the model
-    y_pred = instruction_classifier.predict(X_test)
-    accuracy = np.mean(y_pred == y_test)
-    print(f"Test accuracy: {accuracy:.4f}")
-    
-    
 
+    # Train Neural Network Instruction Classifier
+    print("Training Neural Network Classifier")
+    nn_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
+    nn_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
     
-    
+    # Evaluate the Neural Network model
+    y_pred_nn = nn_classifier.predict(X_test)
+    accuracy_nn = np.mean(y_pred_nn.argmax(axis=1) == y_test)
+    print(f"Neural Network Test accuracy: {accuracy_nn:.4f}")
+
+    # Train XGBoost Instruction Classifier
+    print("Training XGBoost Classifier")
+    xgb_classifier = XGBInstructionClassifier()
+    xgb_classifier.train(features, labels)
+
+    # Compare the models
+    print("\nModel Comparison:")
+    print(f"Neural Network Accuracy: {accuracy_nn:.4f}")
+    print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
+
+    # You can choose which model to use based on the performance
+    # For now, let's use the XGBoost model for further steps
+
     # Train Model Recommender
     # model_recommender = ModelRecommender()
     # model_recommender.train(train_features, train_data['best_model'])
@@ -59,7 +70,7 @@ def main():
     # model_executor = ModelExecutor(models)
 
     # # Create MoEController
-    # moe_controller = MoEController(instruction_classifier, model_recommender, model_executor)
+    # moe_controller = MoEController(xgb_classifier, model_recommender, model_executor)
 
     # # Test MoEController
     # test_instruction = "Write a short story about a magical forest."
