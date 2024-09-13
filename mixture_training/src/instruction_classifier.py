@@ -10,6 +10,7 @@ class SimpleNN(nn.Module):
         super(SimpleNN, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.5)
         self.fc2 = nn.Linear(hidden_size, num_classes)
     
     def forward(self, x):
@@ -34,7 +35,8 @@ class InstructionClassifier:
         train_features = torch.FloatTensor(train_features)
         val_features = torch.FloatTensor(val_features)
         
-        encoded_train_labels = self.label_encoder.fit_transform(train_labels)
+        self.label_encoder.fit(labels)
+        encoded_train_labels = self.label_encoder.transform(train_labels)
         encoded_val_labels = self.label_encoder.transform(val_labels)
         
         train_labels = torch.LongTensor(encoded_train_labels)
