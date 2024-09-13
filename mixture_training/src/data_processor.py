@@ -15,6 +15,8 @@ def load_data(file_path):
     return pd.read_csv(file_path)
 
 def preprocess_text(text):
+    # convert to string
+    text = str(text)
     # Convert to lowercase
     text = text.lower()
     # Remove special characters and digits
@@ -28,6 +30,7 @@ def preprocess_text(text):
 
 def extract_features(df):
     # Preprocess the instruction text
+    df['instruction'] = df['instruction'].astype(str)
     df['processed_instruction'] = df['instruction'].apply(preprocess_text)
     
     # TF-IDF features
@@ -47,6 +50,10 @@ def extract_features(df):
     return feature_matrix, df['category']
 
 def preprocess_data(df):
+    # Remove rows with non string instruction or category
+    df = df[df['instruction'].apply(lambda x: isinstance(x, str))]
+    df = df[df['category'].apply(lambda x: isinstance(x, str))]
+    
     # Extract features and labels
     features, labels = extract_features(df)
     return features, labels
