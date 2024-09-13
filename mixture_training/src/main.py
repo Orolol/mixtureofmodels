@@ -38,8 +38,8 @@ def main():
     print("Data split")
     # Train Instruction Classifier
     
-    instruction_classifier = InstructionClassifier(X_train.shape[1], num_classes=len(np.unique(y_train)))
-    instruction_classifier.train(X_train, y_train, num_epochs=1000)
+    instruction_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[256, 128, 64], num_classes=len(np.unique(y_train)))
+    instruction_classifier.train(X_train, y_train, num_epochs=1000, batch_size=128)
     
     
 
