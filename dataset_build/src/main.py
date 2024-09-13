@@ -8,15 +8,13 @@ from dataset_build.src.evaluator import Evaluator
 from dataset_build.src.dataset_builder import DatasetBuilder
 import torch
 
-def main():
+def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
     print("Check if CUDA is available")
     print(torch.cuda.is_available())
     print(torch.cuda.device_count())
     print(torch.cuda.get_device_name(0))
     
-    MAX_ITER = 50000
     OUTPUT_DIR = "dataset_build/output"
-    BATCH_SIZE = 20  # Number of instructions to process in each batch
     
     # Create output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -25,17 +23,17 @@ def main():
     with open('dataset_build/config/config.yaml', 'r') as file:
         config = yaml.safe_load(file)
 
-    # Load datasets
-    datasets = load_datasets(config['datasets'], MAX_ITER)
-
     # Initialize dataset builder
     dataset_builder = DatasetBuilder()
 
     # Load or create instruction dataset
     instruction_file = f"{OUTPUT_DIR}/dataset_instructions.csv"
-    if os.path.exists(instruction_file):
+    if use_existing_dataset and os.path.exists(instruction_file):
+        print("Loading existing dataset instructions")
         dataset_builder.dataset_df = pd.read_csv(instruction_file)
     else:
+        print("Creating new dataset instructions")
+        datasets = load_datasets(config['datasets'], max_iter)
         for dataset_name, dataset in datasets:
             dataset_builder.add_entries_from_loaded_dataset(dataset)
         dataset_builder.dataset_df.to_csv(instruction_file, index=False)
@@ -58,11 +56,11 @@ def main():
                           config['evaluator_model']['parameters'])
 
     # Process instructions in batches
-    for start_idx in range(0, len(dataset_builder.dataset_df), BATCH_SIZE):
-        end_idx = min(start_idx + BATCH_SIZE, len(dataset_builder.dataset_df))
+    for start_idx in range(0, len(dataset_builder.dataset_df), batch_size):
+        end_idx = min(start_idx + batch_size, len(dataset_builder.dataset_df))
         batch_df = dataset_builder.dataset_df.iloc[start_idx:end_idx]
 
-        print(f"Processing batch {start_idx//BATCH_SIZE + 1}", flush=True)
+        print(f"Processing batch {start_idx//batch_size + 1}", flush=True)
 
         for model_idx, model_config in enumerate(model_configs):
             print(f"Loading model: {model_config['name']}", flush=True)
@@ -150,4 +148,13 @@ def print_statistics(dataset_builder):
     print(f"  - Overall average score: {overall_mean_score:.2f}")
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Dataset Building Script")
+    parser.add_argument("--use_existing_dataset", type=bool, default=True, help="Use existing dataset instructions if available")
+    parser.add_argument("--batch_size", type=int, default=20, help="Number of instructions to process in each batch")
+    parser.add_argument("--max_iter", type=int, default=50000, help="Maximum number of iterations for dataset loading")
+
+    args = parser.parse_args()
+
+    main(use_existing_dataset=args.use_existing_dataset, batch_size=args.batch_size, max_iter=args.max_iter)
