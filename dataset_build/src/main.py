@@ -16,7 +16,7 @@ def main():
     
     MAX_ITER = 50000
     OUTPUT_DIR = "dataset_build/output"
-    BATCH_SIZE = 100  # Number of instructions to process in each batch
+    BATCH_SIZE = 20  # Number of instructions to process in each batch
     
     # Create output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
