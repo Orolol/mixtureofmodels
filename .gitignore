@@ -4,3 +4,4 @@
 *.csv
 *.pth
 *.pt
+*.pkl

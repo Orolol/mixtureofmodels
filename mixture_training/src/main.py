@@ -16,26 +16,30 @@ def main():
     #     config = yaml.safe_load(file)
     
     # check if the processed data pickle file exists
-    if os.path.exists('dataset_build/save/processed_data.pkl'):
-        with open('dataset_build/save/processed_data.pkl', 'rb') as f:
-            processed_data = pickle.load(f)
-    else:
-        # Load and preprocess data
-        data = load_data('dataset_build/output/dataset_instructions.csv')
-        print("Data loaded")
-        processed_data = preprocess_data(data)
+    # if os.path.exists('dataset_build/save/processed_data.pkl'):
+    #     with open('dataset_build/save/processed_data.pkl', 'rb') as f:
+    #         processed_data = pickle.load(f)
+    # else:
+    #     # Load and preprocess data
+    #     data = load_data('dataset_build/output/dataset_instructions.csv')
+    #     print("Data loaded")
+    #     processed_data = preprocess_data(data)
         
-        # Let's save the processed data to a pickle file
-        if not os.path.exists('dataset_build/save'):
-            os.makedirs('dataset_build/save')
-        print("Saving processed data")
-        with open('dataset_build/save/processed_data.pkl', 'wb') as f:
-            pickle.dump(processed_data, f)
+    #     # Let's save the processed data to a pickle file
+    #     if not os.path.exists('dataset_build/save'):
+    #         os.makedirs('dataset_build/save')
+    #     print("Saving processed data")
+    #     with open('dataset_build/save/processed_data.pkl', 'wb') as f:
+    #         pickle.dump(processed_data, f)
+    
+    processed_data = load_data('dataset_build/output/dataset_instructions.csv')
+    features, labels = preprocess_data(processed_data)
+    
+    print(features.shape)
+    print(labels.shape)
             
     print("Data preprocessed")
-    features, labels = processed_data[0], processed_data[1]
-
-    X_train, X_test, y_train, y_test = split_data(features, labels=labels)
+    X_train, X_test, y_train, y_test = split_data(features,labels)
     print("Data split")
 
     # Train RoBERTa Instruction Classifier

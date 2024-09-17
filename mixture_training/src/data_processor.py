@@ -37,42 +37,42 @@ def extract_features(df):
     df['instruction'] = df['instruction'].astype(str)
     df['processed_instruction'] = df['instruction'].apply(preprocess_text)
     
-    # TF-IDF features
-    print("Fitting TF-IDF")
-    tfidf = TfidfVectorizer(max_features=2000, ngram_range=(1, 2))
-    tfidf_features = tfidf.fit_transform(df['processed_instruction'])
+    # # TF-IDF features
+    # print("Fitting TF-IDF")
+    # tfidf = TfidfVectorizer(max_features=2000, ngram_range=(1, 2))
+    # tfidf_features = tfidf.fit_transform(df['processed_instruction'])
     
-    # Length features
-    print("Extracting length features")
-    df['instruction_length'] = df['instruction'].apply(len)
-    df['word_count'] = df['instruction'].apply(lambda x: len(x.split()))
-    df['sentence_count'] = df['instruction'].apply(lambda x: len(sent_tokenize(x)))
+    # # Length features
+    # print("Extracting length features")
+    # df['instruction_length'] = df['instruction'].apply(len)
+    # df['word_count'] = df['instruction'].apply(lambda x: len(x.split()))
+    # df['sentence_count'] = df['instruction'].apply(lambda x: len(sent_tokenize(x)))
 
-    # Sentiment features
-    print("Extracting sentiment features")
-    sia = SentimentIntensityAnalyzer()
-    df['sentiment_scores'] = df['instruction'].apply(lambda x: sia.polarity_scores(x))
-    df['sentiment_compound'] = df['sentiment_scores'].apply(lambda x: x['compound'])
+    # # Sentiment features
+    # print("Extracting sentiment features")
+    # sia = SentimentIntensityAnalyzer()
+    # df['sentiment_scores'] = df['instruction'].apply(lambda x: sia.polarity_scores(x))
+    # df['sentiment_compound'] = df['sentiment_scores'].apply(lambda x: x['compound'])
     
-    # Readability features
-    print("Extracting readability features")
-    df['flesch_kincaid_grade'] = df['instruction'].apply(flesch_kincaid_grade)
-    df['flesch_reading_ease'] = df['instruction'].apply(flesch_reading_ease)
+    # # Readability features
+    # print("Extracting readability features")
+    # df['flesch_kincaid_grade'] = df['instruction'].apply(flesch_kincaid_grade)
+    # df['flesch_reading_ease'] = df['instruction'].apply(flesch_reading_ease)
     
-    # Additional text statistics
-    print("Extracting additional text statistics")
-    df['avg_word_length'] = df['instruction'].apply(lambda x: np.mean([len(word) for word in x.split()]))
-    df['unique_word_count'] = df['instruction'].apply(lambda x: len(set(x.split())))
+    # # Additional text statistics
+    # print("Extracting additional text statistics")
+    # df['avg_word_length'] = df['instruction'].apply(lambda x: np.mean([len(word) for word in x.split()]))
+    # df['unique_word_count'] = df['instruction'].apply(lambda x: len(set(x.split())))
     
-    # Combine all features
-    print("Combining all features")
-    feature_matrix = np.hstack((
-        tfidf_features.toarray(),
-        df[['instruction_length', 'word_count', 'sentence_count', 'sentiment_compound',
-            'flesch_kincaid_grade', 'flesch_reading_ease', 'avg_word_length', 'unique_word_count']].values
-    ))
+    # # Combine all features
+    # print("Combining all features")
+    # feature_matrix = np.hstack((
+    #     tfidf_features.toarray(),
+    #     df[['instruction_length', 'word_count', 'sentence_count', 'sentiment_compound',
+    #         'flesch_kincaid_grade', 'flesch_reading_ease', 'avg_word_length', 'unique_word_count']].values
+    # ))
     
-    return feature_matrix, df['category']
+    return df['processed_instruction'], df['category']
 
 def preprocess_data(df):
     # Remove rows with non string instruction or category
