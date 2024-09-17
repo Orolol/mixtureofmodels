@@ -33,20 +33,20 @@ def main():
             pickle.dump(processed_data, f)
             
     print("Data preprocessed")
-    features, labels = processed_data
+    features, labels = processed_data[0][:2000], processed_data[1][:2000]
 
     X_train, X_test, y_train, y_test = split_data(features, labels=labels)
     print("Data split")
 
     # Train Neural Network Instruction Classifier
-    print("Training Neural Network Classifier")
-    nn_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
-    nn_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
+    # print("Training Neural Network Classifier")
+    # nn_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
+    # nn_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
     
-    # Evaluate the Neural Network model
-    y_pred_nn = nn_classifier.predict(X_test)
-    accuracy_nn = np.mean(y_pred_nn.argmax(axis=1) == y_test)
-    print(f"Neural Network Test accuracy: {accuracy_nn:.4f}")
+    # # Evaluate the Neural Network model
+    # y_pred_nn = nn_classifier.predict(X_test)
+    # accuracy_nn = np.mean(y_pred_nn.argmax(axis=1) == y_test)
+    # print(f"Neural Network Test accuracy: {accuracy_nn:.4f}")
 
     # Train XGBoost Instruction Classifier
     print("Training XGBoost Classifier")
@@ -55,7 +55,7 @@ def main():
 
     # Compare the models
     print("\nModel Comparison:")
-    print(f"Neural Network Accuracy: {accuracy_nn:.4f}")
+    # print(f"Neural Network Accuracy: {accuracy_nn:.4f}")
     print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
 
     # You can choose which model to use based on the performance
