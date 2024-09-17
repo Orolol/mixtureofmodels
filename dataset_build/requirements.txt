@@ -7,3 +7,6 @@ python-dotenv
 llama-cpp-python
 scikit-learn
 numpy
+tqdm
+nltk
+textstat
