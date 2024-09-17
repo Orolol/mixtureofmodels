@@ -8,14 +8,9 @@ from dataset_build.src.evaluator import Evaluator
 from dataset_build.src.dataset_builder import DatasetBuilder
 import torch
 
-def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
-    print("Check if CUDA is available")
-    print(torch.cuda.is_available())
-    print(torch.cuda.device_count())
-    print(torch.cuda.get_device_name(0))
-    
-    OUTPUT_DIR = "dataset_build/output"
-    
+OUTPUT_DIR = "dataset_build/output"
+
+def load_dataset(use_existing_dataset, max_iter):
     # Create output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -51,6 +46,9 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
     if os.path.exists(evaluations_file):
         dataset_builder.evaluations_df = pd.read_csv(evaluations_file)
 
+    return dataset_builder, config
+
+def run_models_and_evaluate(dataset_builder, config, batch_size):
     # Load model configurations
     model_configs = config['models']
 
@@ -87,13 +85,13 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
                     response = model.generate(instruction)
                     response_id = str(uuid.uuid4())
                     dataset_builder.add_response(response_id, question_id, model_idx, response)
-                    dataset_builder.responses_df.to_csv(responses_file, index=False)
+                    dataset_builder.responses_df.to_csv(f"{OUTPUT_DIR}/dataset_responses.csv", index=False)
 
                     # Evaluate the response
                     score = evaluator.evaluate(instruction, response)
                     evaluation_id = str(uuid.uuid4())
                     dataset_builder.add_evaluation(evaluation_id, response_id, score)
-                    dataset_builder.evaluations_df.to_csv(evaluations_file, index=False)
+                    dataset_builder.evaluations_df.to_csv(f"{OUTPUT_DIR}/dataset_evaluations.csv", index=False)
                 else:
                     response_id = existing_response['response_id'].iloc[0]
                     # Check if evaluation exists
@@ -107,7 +105,7 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
                         score = evaluator.evaluate(instruction, response)
                         evaluation_id = str(uuid.uuid4())
                         dataset_builder.add_evaluation(evaluation_id, response_id, score)
-                        dataset_builder.evaluations_df.to_csv(evaluations_file, index=False)
+                        dataset_builder.evaluations_df.to_csv(f"{OUTPUT_DIR}/dataset_evaluations.csv", index=False)
 
             # Unload the model to free up memory
             del model
@@ -115,6 +113,17 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
 
         # Save progress after each batch
         dataset_builder.save_datasets(f"{OUTPUT_DIR}/dataset")
+
+def main(use_existing_dataset=True, batch_size=20, max_iter=50000, only_load=False):
+    print("Check if CUDA is available")
+    print(torch.cuda.is_available())
+    print(torch.cuda.device_count())
+    print(torch.cuda.get_device_name(0))
+
+    dataset_builder, config = load_dataset(use_existing_dataset, max_iter)
+    
+    if not only_load:
+        run_models_and_evaluate(dataset_builder, config, batch_size)
 
     # Print statistics
     print_statistics(dataset_builder)
@@ -159,9 +168,10 @@ if __name__ == "__main__":
     parser.add_argument("--use_existing_dataset", type=bool, default=False, help="Use existing dataset instructions if available")
     parser.add_argument("--batch_size", type=int, default=20, help="Number of instructions to process in each batch")
     parser.add_argument("--max_iter", type=int, default=50000, help="Maximum number of iterations for dataset loading")
+    parser.add_argument("--only_load", action="store_true", help="Only load the dataset without running models and evaluations")
 
     args = parser.parse_args()
     
-    print(args.use_existing_dataset, args.batch_size, args.max_iter)
+    print(args.use_existing_dataset, args.batch_size, args.max_iter, args.only_load)
 
-    main(use_existing_dataset=args.use_existing_dataset, batch_size=args.batch_size, max_iter=args.max_iter)
+    main(use_existing_dataset=args.use_existing_dataset, batch_size=args.batch_size, max_iter=args.max_iter, only_load=args.only_load)
