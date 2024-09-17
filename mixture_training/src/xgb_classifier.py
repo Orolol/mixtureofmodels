@@ -6,30 +6,35 @@ from sklearn.metrics import accuracy_score, classification_report
 
 class XGBInstructionClassifier:
     def __init__(self):
-        self.model = XGBClassifier(use_label_encoder=False, eval_metric='mlogloss')
+        self.model = XGBClassifier(eval_metric='mlogloss')
         self.label_encoder = LabelEncoder()
 
     def train(self, features, labels, test_size=0.2, random_state=42):
         # Encode labels
+        print("Encoding labels") 
         encoded_labels = self.label_encoder.fit_transform(labels)
-
+        print("Labels encoded")
         # Split the data
         X_train, X_test, y_train, y_test = train_test_split(
             features, encoded_labels, test_size=test_size, random_state=random_state
         )
-
+        print("Data split")
         # Define parameter grid for GridSearchCV
         param_grid = {
-            'max_depth': [3, 5, 7],
-            'learning_rate': [0.01, 0.1, 0.3],
+            'max_depth': [7, 9],
+            'learning_rate': [0.01, 0.1, 0.2],
             'n_estimators': [100, 200, 300],
-            'subsample': [0.8, 1.0],
-            'colsample_bytree': [0.8, 1.0]
+            'subsample': [0.8, 1.0, 1.2],
+            'colsample_bytree': [1.0]
         }
+        
+        print("Starting GridSearchCV")
 
         # Perform GridSearchCV
-        grid_search = GridSearchCV(self.model, param_grid, cv=3, n_jobs=-1, verbose=2)
+        grid_search = GridSearchCV(self.model, param_grid, cv=3, n_jobs=-1, verbose=4)
         grid_search.fit(X_train, y_train)
+
+        print("GridSearchCV completed")
 
         # Get the best model
         self.model = grid_search.best_estimator_

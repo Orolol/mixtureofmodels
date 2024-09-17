@@ -33,7 +33,7 @@ def main():
             pickle.dump(processed_data, f)
             
     print("Data preprocessed")
-    features, labels = processed_data[0][:2000], processed_data[1][:2000]
+    features, labels = processed_data[0], processed_data[1]
 
     X_train, X_test, y_train, y_test = split_data(features, labels=labels)
     print("Data split")
@@ -41,7 +41,7 @@ def main():
     # Train RoBERTa Instruction Classifier
     print("Training RoBERTa Classifier")
     roberta_classifier = InstructionClassifier(num_classes=len(np.unique(labels)))
-    roberta_classifier.train(X_train, y_train, num_epochs=5, batch_size=32)
+    roberta_classifier.train(X_train, y_train, num_epochs=5, batch_size=8)
     
     # Evaluate the RoBERTa model
     y_pred_roberta = roberta_classifier.predict(X_test)
@@ -49,14 +49,14 @@ def main():
     print(f"RoBERTa Test accuracy: {accuracy_roberta:.4f}")
 
     # Train XGBoost Instruction Classifier
-    print("Training XGBoost Classifier")
-    xgb_classifier = XGBInstructionClassifier()
-    xgb_classifier.train(features, labels)
+    # print("Training XGBoost Classifier")
+    # xgb_classifier = XGBInstructionClassifier()
+    # xgb_classifier.train(features, labels)
 
     # Compare the models
     print("\nModel Comparison:")
     print(f"RoBERTa Accuracy: {accuracy_roberta:.4f}")
-    print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
+    # print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
 
     # You can choose which model to use based on the performance
     # For now, let's use the RoBERTa model for further steps

@@ -3,7 +3,7 @@ from huggingface_hub import login
 import json
 from mom_utils.env import load_env_variables, get_huggingface_token
 
-def load_datasets(dataset_configs):
+def load_datasets(dataset_configs, max_iter):
     datasets = []
     load_env_variables()
     print("Token", get_huggingface_token())
@@ -17,21 +17,17 @@ def load_datasets(dataset_configs):
         # Process the dataset to extract relevant information
         processed_dataset = []
         for i, item in enumerate(dataset):
-            if i >= 50:  # Process only the first 5 items
+            if i >= max_iter:  # Process only the first 5 items
                 break
-            print(f"Processing item {i+1}: {item['id']}")
+            print(f"Processing item {i+1}/{max_iter} : {item['id']}", end="\r", flush=True)
             
             conversation = item['conversations']
             instruction = next(msg['value'] for msg in conversation if msg['from'] == 'human')
             response = next(msg['value'] for msg in conversation if msg['from'] == 'gpt')
             
             abilities = item['label']['ability_en'] if type(item['label']) == dict else ""
-            category = item['label']['cate_ability_en'][0] if type(item['label']) == dict else ""
-            
-            
-            print("Item labels", item['label'])
-            print(abilities, category)
-            
+            category = item['label']['cate_ability_en'][0] if type(item['label']) == dict and 'cate_ability_en' in item['label'] and len(item['label']['cate_ability_en']) > 0 else ""
+
             processed_item = {
                 'id': item['id'],
                 'instruction': instruction,

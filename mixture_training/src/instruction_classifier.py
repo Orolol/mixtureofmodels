@@ -62,7 +62,7 @@ class InstructionClassifier:
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
         
-    def train(self, texts, labels, num_epochs=5, batch_size=16, learning_rate=2e-5, validation_split=0.2):
+    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=2e-5, validation_split=0.2):
         # Encode labels
         self.label_encoder.fit(labels)
         encoded_labels = self.label_encoder.transform(labels)

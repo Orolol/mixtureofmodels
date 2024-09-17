@@ -2,3 +2,5 @@
 .env
 *.pyc
 *.csv
+*.pth
+*.pt

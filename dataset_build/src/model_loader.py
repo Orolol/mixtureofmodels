@@ -6,7 +6,7 @@ class ModelWrapper(BaseModel):
         return Llama.from_pretrained(
             repo_id=name,
             filename=path,
-            verbose=True,
+            verbose=False,
             n_ctx=4096,
             n_gpu_layers=200
         )

@@ -25,6 +25,8 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
 
     # Initialize dataset builder
     dataset_builder = DatasetBuilder()
+    
+    print("Dataset builder initialized")
 
     # Load or create instruction dataset
     instruction_file = f"{OUTPUT_DIR}/dataset_instructions.csv"
@@ -36,8 +38,11 @@ def main(use_existing_dataset=True, batch_size=20, max_iter=50000):
         datasets = load_datasets(config['datasets'], max_iter)
         for dataset_name, dataset in datasets:
             dataset_builder.add_entries_from_loaded_dataset(dataset)
+        print("Dataset instructions created, saving to CSV ...")
         dataset_builder.dataset_df.to_csv(instruction_file, index=False)
+        print("Dataset instructions saved to CSV")
 
+    print("Dataset instructions loaded")
     # Load existing responses and evaluations
     responses_file = f"{OUTPUT_DIR}/dataset_responses.csv"
     evaluations_file = f"{OUTPUT_DIR}/dataset_evaluations.csv"
@@ -151,10 +156,12 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Dataset Building Script")
-    parser.add_argument("--use_existing_dataset", type=bool, default=True, help="Use existing dataset instructions if available")
+    parser.add_argument("--use_existing_dataset", type=bool, default=False, help="Use existing dataset instructions if available")
     parser.add_argument("--batch_size", type=int, default=20, help="Number of instructions to process in each batch")
     parser.add_argument("--max_iter", type=int, default=50000, help="Maximum number of iterations for dataset loading")
 
     args = parser.parse_args()
+    
+    print(args.use_existing_dataset, args.batch_size, args.max_iter)
 
     main(use_existing_dataset=args.use_existing_dataset, batch_size=args.batch_size, max_iter=args.max_iter)
