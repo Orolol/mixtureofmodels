@@ -38,15 +38,15 @@ def main():
     X_train, X_test, y_train, y_test = split_data(features, labels=labels)
     print("Data split")
 
-    # Train Neural Network Instruction Classifier
-    # print("Training Neural Network Classifier")
-    # nn_classifier = InstructionClassifier(X_train.shape[1], hidden_sizes=[512, 256, 128], num_classes=len(np.unique(y_train)))
-    # nn_classifier.train(X_train, y_train, num_epochs=200, batch_size=64)
+    # Train RoBERTa Instruction Classifier
+    print("Training RoBERTa Classifier")
+    roberta_classifier = InstructionClassifier(num_classes=len(np.unique(labels)))
+    roberta_classifier.train(X_train, y_train, num_epochs=5, batch_size=32)
     
-    # # Evaluate the Neural Network model
-    # y_pred_nn = nn_classifier.predict(X_test)
-    # accuracy_nn = np.mean(y_pred_nn.argmax(axis=1) == y_test)
-    # print(f"Neural Network Test accuracy: {accuracy_nn:.4f}")
+    # Evaluate the RoBERTa model
+    y_pred_roberta = roberta_classifier.predict(X_test)
+    accuracy_roberta = np.mean(y_pred_roberta == y_test)
+    print(f"RoBERTa Test accuracy: {accuracy_roberta:.4f}")
 
     # Train XGBoost Instruction Classifier
     print("Training XGBoost Classifier")
@@ -55,34 +55,42 @@ def main():
 
     # Compare the models
     print("\nModel Comparison:")
-    # print(f"Neural Network Accuracy: {accuracy_nn:.4f}")
+    print(f"RoBERTa Accuracy: {accuracy_roberta:.4f}")
     print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
 
     # You can choose which model to use based on the performance
-    # For now, let's use the XGBoost model for further steps
+    # For now, let's use the RoBERTa model for further steps
 
     # Train Model Recommender
-    # model_recommender = ModelRecommender()
-    # model_recommender.train(train_features, train_data['best_model'])
+    model_recommender = ModelRecommender()
+    model_recommender.train(X_train, y_train)
 
-    # # Load models for Model Executor
+    # Load models for Model Executor
     # models = load_models(config['models'])
-    # model_executor = ModelExecutor(models)
+    models = load_models()  # Implement this function to load your models
+    model_executor = ModelExecutor(models)
 
-    # # Create MoEController
-    # moe_controller = MoEController(xgb_classifier, model_recommender, model_executor)
+    # Create MoEController
+    moe_controller = MoEController(roberta_classifier, model_recommender, model_executor)
 
-    # # Test MoEController
-    # test_instruction = "Write a short story about a magical forest."
-    # response, recommended_model_index = moe_controller.process_instruction(test_instruction)
-    # print(f"Test instruction: {test_instruction}")
-    # print(f"Recommended model index: {recommended_model_index}")
-    # print(f"Response: {response}")
+    # Test MoEController
+    test_instructions = [
+        "Write a short story about a magical forest.",
+        "Explain the concept of quantum entanglement.",
+        "Translate 'Hello, how are you?' to French."
+    ]
+    
+    for test_instruction in test_instructions:
+        response, recommended_model_index = moe_controller.process_instruction(test_instruction)
+        print(f"Test instruction: {test_instruction}")
+        print(f"Recommended model index: {recommended_model_index}")
+        print(f"Response: {response}")
+        print("---")
 
-    # # Update models based on feedback (simulated here)
-    # actual_model_index = 0  # This would be the actual model used
-    # feedback = 4.5  # This would be the actual feedback score
-    # moe_controller.update_models(test_instruction, actual_model_index, feedback)
+    # Update models based on feedback (simulated here)
+    actual_model_index = 0  # This would be the actual model used
+    feedback = 4.5  # This would be the actual feedback score
+    moe_controller.update_models(test_instructions[0], actual_model_index, feedback)
 
 if __name__ == "__main__":
     main()
