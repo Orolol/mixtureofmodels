@@ -2,3 +2,5 @@ pandas
 scikit-learn
 torch
 transformers
+nltk
+textstat
