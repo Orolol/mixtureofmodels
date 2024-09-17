@@ -35,7 +35,7 @@ def extract_features(df):
     # Preprocess the instruction text
     print("Preprocessing text")
     df['instruction'] = df['instruction'].astype(str)
-    df['processed_instruction'] = df['instruction'].apply(preprocess_text)
+    # df['processed_instruction'] = df['instruction'].apply(preprocess_text)
     
     # # TF-IDF features
     # print("Fitting TF-IDF")
@@ -72,7 +72,7 @@ def extract_features(df):
     #         'flesch_kincaid_grade', 'flesch_reading_ease', 'avg_word_length', 'unique_word_count']].values
     # ))
     
-    return df['processed_instruction'], df['category']
+    return df['instruction'], df['category']
 
 def preprocess_data(df):
     # Remove rows with non string instruction or category
