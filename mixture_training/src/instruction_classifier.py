@@ -19,8 +19,13 @@ class InstructionDataset(Dataset):
         return len(self.texts)
 
     def __getitem__(self, idx):
+        print(idx)
+        print(self.texts.shape)
+        print(self.labels.shape)
         text = str(self.texts[idx])
         label = self.labels[idx]
+        print(text)
+        print(label)
 
         encoding = self.tokenizer.encode_plus(
             text,
