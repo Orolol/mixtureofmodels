@@ -3,6 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from transformers import RobertaTokenizer, RobertaModel, AdamW, get_linear_schedule_with_warmup
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
@@ -19,13 +23,15 @@ class InstructionDataset(Dataset):
         return len(self.texts)
 
     def __getitem__(self, idx):
-        print(idx)
-        print(self.texts.shape)
-        print(self.labels.shape)
-        text = str(self.texts[idx])
-        label = self.labels[idx]
-        print(text)
-        print(label)
+        try:
+            text = str(self.texts.iloc[idx])
+            label = self.labels.iloc[idx]
+        except IndexError as e:
+            logger.error(f"Index {idx} is out of bounds. Dataset length: {len(self.texts)}")
+            raise IndexError(f"Index {idx} is out of bounds. Dataset length: {len(self.texts)}") from e
+        except Exception as e:
+            logger.error(f"Error accessing data at index {idx}: {str(e)}")
+            raise
 
         encoding = self.tokenizer.encode_plus(
             text,
@@ -68,6 +74,8 @@ class InstructionClassifier:
         self.label_encoder = LabelEncoder()
         
     def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=2e-5, validation_split=0.2):
+        logger.info(f"Starting training with {len(texts)} samples")
+        
         # Encode labels
         self.label_encoder.fit(labels)
         encoded_labels = self.label_encoder.transform(labels)
@@ -76,6 +84,8 @@ class InstructionClassifier:
         train_texts, val_texts, train_labels, val_labels = train_test_split(
             texts, encoded_labels, test_size=validation_split, random_state=42
         )
+        
+        logger.info(f"Train set size: {len(train_texts)}, Validation set size: {len(val_texts)}")
         
         # Create datasets
         train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
@@ -96,7 +106,8 @@ class InstructionClassifier:
             self.model.train()
             total_train_loss = 0
             
-            for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
+            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
+                try:
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
@@ -111,6 +122,15 @@ class InstructionClassifier:
                 optimizer.step()
                 scheduler.step()
             
+                    total_train_loss += loss.item()
+
+                    if batch_idx % 100 == 0:
+                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}")
+
+                except Exception as e:
+                    logger.error(f"Error in training batch {batch_idx}: {str(e)}")
+                    continue
+
             avg_train_loss = total_train_loss / len(train_loader)
             
             # Validation
@@ -118,26 +138,31 @@ class InstructionClassifier:
             total_val_loss = 0
             
             with torch.no_grad():
-                for batch in val_loader:
-                    input_ids = batch['input_ids'].to(self.device)
-                    attention_mask = batch['attention_mask'].to(self.device)
-                    labels = batch['labels'].to(self.device)
-                    
-                    outputs = self.model(input_ids, attention_mask)
-                    loss = nn.CrossEntropyLoss()(outputs, labels)
-                    total_val_loss += loss.item()
+                for batch_idx, batch in enumerate(val_loader):
+                    try:
+                        input_ids = batch['input_ids'].to(self.device)
+                        attention_mask = batch['attention_mask'].to(self.device)
+                        labels = batch['labels'].to(self.device)
+                        
+                        outputs = self.model(input_ids, attention_mask)
+                        loss = nn.CrossEntropyLoss()(outputs, labels)
+                        total_val_loss += loss.item()
+                    except Exception as e:
+                        logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
+                        continue
             
             avg_val_loss = total_val_loss / len(val_loader)
             
-            print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}')
+            logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}')
             
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss
                 torch.save(self.model.state_dict(), 'best_roberta_model.pth')
-                print("Saved best model.")
+                logger.info("Saved best model.")
         
         # Load the best model
         self.model.load_state_dict(torch.load('best_roberta_model.pth'))
+        logger.info("Training completed.")
     
     def predict(self, texts):
         self.model.eval()
