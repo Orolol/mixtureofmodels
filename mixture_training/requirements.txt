@@ -4,3 +4,4 @@ torch
 transformers
 nltk
 textstat
+tqdm

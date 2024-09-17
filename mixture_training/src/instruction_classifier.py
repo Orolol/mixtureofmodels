@@ -1,124 +1,155 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from transformers import RobertaTokenizer, RobertaModel, AdamW, get_linear_schedule_with_warmup
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 import numpy as np
 
-class ImprovedNN(nn.Module):
-    def __init__(self, input_size, hidden_sizes, num_classes, dropout_rate=0.3):
-        super(ImprovedNN, self).__init__()
-        self.layers = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
-        self.dropouts = nn.ModuleList()
+class InstructionDataset(Dataset):
+    def __init__(self, texts, labels, tokenizer, max_length):
+        self.texts = texts
+        self.labels = labels
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
-        # Input layer
-        self.layers.append(nn.Linear(input_size, hidden_sizes[0]))
-        self.batch_norms.append(nn.BatchNorm1d(hidden_sizes[0]))
-        self.dropouts.append(nn.Dropout(dropout_rate))
+    def __len__(self):
+        return len(self.texts)
 
-        # Hidden layers
-        for i in range(1, len(hidden_sizes)):
-            self.layers.append(nn.Linear(hidden_sizes[i-1], hidden_sizes[i]))
-            self.batch_norms.append(nn.BatchNorm1d(hidden_sizes[i]))
-            self.dropouts.append(nn.Dropout(dropout_rate))
+    def __getitem__(self, idx):
+        text = str(self.texts[idx])
+        label = self.labels[idx]
 
-        # Output layer
-        self.layers.append(nn.Linear(hidden_sizes[-1], num_classes))
+        encoding = self.tokenizer.encode_plus(
+            text,
+            add_special_tokens=True,
+            max_length=self.max_length,
+            return_token_type_ids=False,
+            padding='max_length',
+            truncation=True,
+            return_attention_mask=True,
+            return_tensors='pt',
+        )
 
-    def forward(self, x):
-        for i, (layer, bn, dropout) in enumerate(zip(self.layers[:-1], self.batch_norms, self.dropouts)):
-            x = layer(x)
-            x = bn(x)
-            x = nn.LeakyReLU(0.1)(x)
-            x = dropout(x)
-        x = self.layers[-1](x)
-        return x
+        return {
+            'input_ids': encoding['input_ids'].flatten(),
+            'attention_mask': encoding['attention_mask'].flatten(),
+            'labels': torch.tensor(label, dtype=torch.long)
+        }
+
+class RoBERTaClassifier(nn.Module):
+    def __init__(self, num_classes):
+        super(RoBERTaClassifier, self).__init__()
+        self.roberta = RobertaModel.from_pretrained('roberta-large')
+        self.dropout = nn.Dropout(0.1)
+        self.fc = nn.Linear(self.roberta.config.hidden_size, num_classes)
+        
+    def forward(self, input_ids, attention_mask):
+        outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
+        pooled_output = outputs.pooler_output
+        x = self.dropout(pooled_output)
+        logits = self.fc(x)
+        return logits
 
 class InstructionClassifier:
-    def __init__(self, input_size, hidden_sizes=[256, 128, 64], num_classes=20):
+    def __init__(self, num_classes=20, max_length=128):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
-        self.model = ImprovedNN(input_size, hidden_sizes, num_classes).to(self.device)
-        self.criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-        self.optimizer = optim.AdamW(self.model.parameters(), lr=0.001, weight_decay=1e-4)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10, eta_min=1e-6)
+        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-large')
+        self.model = RoBERTaClassifier(num_classes).to(self.device)
+        self.max_length = max_length
         self.label_encoder = LabelEncoder()
         
-    def train(self, features, labels, num_epochs=200, batch_size=64, validation_split=0.2, patience=20):
-        # Split the data into training and validation sets
-        train_features, val_features, train_labels, val_labels = train_test_split(
-            features, labels, test_size=validation_split, random_state=42
+    def train(self, texts, labels, num_epochs=5, batch_size=16, learning_rate=2e-5, validation_split=0.2):
+        # Encode labels
+        self.label_encoder.fit(labels)
+        encoded_labels = self.label_encoder.transform(labels)
+        
+        # Split the data
+        train_texts, val_texts, train_labels, val_labels = train_test_split(
+            texts, encoded_labels, test_size=validation_split, random_state=42
         )
         
-        train_features = torch.FloatTensor(train_features).to(self.device)
-        val_features = torch.FloatTensor(val_features).to(self.device)
+        # Create datasets
+        train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
+        val_dataset = InstructionDataset(val_texts, val_labels, self.tokenizer, self.max_length)
         
-        self.label_encoder.fit(labels)
-        encoded_train_labels = self.label_encoder.transform(train_labels)
-        encoded_val_labels = self.label_encoder.transform(val_labels)
+        # Create data loaders
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size)
         
-        train_labels = torch.LongTensor(encoded_train_labels).to(self.device)
-        val_labels = torch.LongTensor(encoded_val_labels).to(self.device)
+        # Initialize optimizer and scheduler
+        optimizer = AdamW(self.model.parameters(), lr=learning_rate)
+        total_steps = len(train_loader) * num_epochs
+        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
         
+        # Training loop
         best_val_loss = float('inf')
-        epochs_no_improve = 0
-        
         for epoch in range(num_epochs):
             self.model.train()
-            total_loss = 0
-            for i in range(0, len(train_features), batch_size):
-                batch_features = train_features[i:i+batch_size]
-                batch_labels = train_labels[i:i+batch_size]
-                
-                outputs = self.model(batch_features)
-                loss = self.criterion(outputs, batch_labels)
-                
-                self.optimizer.zero_grad()
-                loss.backward()
-                
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                
-                self.optimizer.step()
-                total_loss += loss.item()
+            total_train_loss = 0
             
-            avg_train_loss = total_loss / (len(train_features) // batch_size)
+            for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                labels = batch['labels'].to(self.device)
+                
+                self.model.zero_grad()
+                outputs = self.model(input_ids, attention_mask)
+                loss = nn.CrossEntropyLoss()(outputs, labels)
+                total_train_loss += loss.item()
+                
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                optimizer.step()
+                scheduler.step()
+            
+            avg_train_loss = total_train_loss / len(train_loader)
             
             # Validation
             self.model.eval()
+            total_val_loss = 0
+            
             with torch.no_grad():
-                val_outputs = self.model(val_features)
-                val_loss = self.criterion(val_outputs, val_labels)
-                
-            print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss.item():.4f}')
+                for batch in val_loader:
+                    input_ids = batch['input_ids'].to(self.device)
+                    attention_mask = batch['attention_mask'].to(self.device)
+                    labels = batch['labels'].to(self.device)
+                    
+                    outputs = self.model(input_ids, attention_mask)
+                    loss = nn.CrossEntropyLoss()(outputs, labels)
+                    total_val_loss += loss.item()
             
-            # Learning rate scheduling
-            self.scheduler.step(val_loss)
+            avg_val_loss = total_val_loss / len(val_loader)
             
-            # Early stopping
-            if val_loss < best_val_loss:
-                best_val_loss = val_loss
-                epochs_no_improve = 0
-                # Save the best model
-                torch.save(self.model.state_dict(), 'best_model.pth')
-            else:
-                epochs_no_improve += 1
-                if epochs_no_improve == patience:
-                    print(f'Early stopping triggered after {epoch+1} epochs')
-                    # Load the best model
-                    self.model.load_state_dict(torch.load('best_model.pth'))
-                    break
+            print(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}')
+            
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                torch.save(self.model.state_dict(), 'best_roberta_model.pth')
+                print("Saved best model.")
+        
+        # Load the best model
+        self.model.load_state_dict(torch.load('best_roberta_model.pth'))
     
-    def predict(self, features):
+    def predict(self, texts):
         self.model.eval()
+        dataset = InstructionDataset(texts, [0]*len(texts), self.tokenizer, self.max_length)
+        dataloader = DataLoader(dataset, batch_size=1)
+        
+        predictions = []
         with torch.no_grad():
-            features = torch.FloatTensor(features).to(self.device)
-            outputs = self.model(features)
-            probabilities = torch.softmax(outputs, dim=1)
-        return probabilities.cpu().numpy()
+            for batch in dataloader:
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                
+                outputs = self.model(input_ids, attention_mask)
+                _, preds = torch.max(outputs, dim=1)
+                predictions.extend(preds.cpu().tolist())
+        
+        return self.label_encoder.inverse_transform(predictions)
     
-    def predict_class(self, features):
-        probabilities = self.predict(features)
-        predicted_class = self.label_encoder.inverse_transform(probabilities.argmax(axis=1))
-        return predicted_class[0]
+    def predict_class(self, text):
+        return self.predict([text])[0]
