@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, AdamW, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaModel, get_linear_schedule_with_warmup
+from torch.optim import AdamW
 import logging
 
 logging.basicConfig(level=logging.INFO)
