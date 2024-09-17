@@ -108,20 +108,19 @@ class InstructionClassifier:
             
             for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
                 try:
-                input_ids = batch['input_ids'].to(self.device)
-                attention_mask = batch['attention_mask'].to(self.device)
-                labels = batch['labels'].to(self.device)
+                    input_ids = batch['input_ids'].to(self.device)
+                    attention_mask = batch['attention_mask'].to(self.device)
+                    labels = batch['labels'].to(self.device)
                 
-                self.model.zero_grad()
-                outputs = self.model(input_ids, attention_mask)
-                loss = nn.CrossEntropyLoss()(outputs, labels)
-                total_train_loss += loss.item()
+                    self.model.zero_grad()
+                    outputs = self.model(input_ids, attention_mask)
+                    loss = nn.CrossEntropyLoss()(outputs, labels)
+                    
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    optimizer.step()
+                    scheduler.step()
                 
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-                optimizer.step()
-                scheduler.step()
-            
                     total_train_loss += loss.item()
 
                     if batch_idx % 100 == 0:
