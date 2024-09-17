@@ -24,8 +24,8 @@ class InstructionDataset(Dataset):
 
     def __getitem__(self, idx):
         try:
-            text = str(self.texts.iloc[idx])
-            label = self.labels.iloc[idx]
+            text = str(self.texts.iloc[idx] if hasattr(self.texts, 'iloc') else self.texts[idx])
+            label = self.labels[idx]
         except IndexError as e:
             logger.error(f"Index {idx} is out of bounds. Dataset length: {len(self.texts)}")
             raise IndexError(f"Index {idx} is out of bounds. Dataset length: {len(self.texts)}") from e
