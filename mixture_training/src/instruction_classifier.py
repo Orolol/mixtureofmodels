@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup
 import warnings
 from torch.optim import AdamW
 import logging
@@ -55,30 +55,45 @@ class InstructionDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-class RoBERTaClassifier(nn.Module):
-    def __init__(self, num_classes):
-        super(RoBERTaClassifier, self).__init__()
-        config = RobertaConfig.from_pretrained('roberta-large')
-        self.roberta = RobertaModel.from_pretrained('roberta-large', config=config)
+class TransformerClassifier(nn.Module):
+    def __init__(self, num_classes, model_type='roberta-large'):
+        super(TransformerClassifier, self).__init__()
+        if 'roberta' in model_type:
+            config = RobertaConfig.from_pretrained(model_type)
+            self.transformer = RobertaModel.from_pretrained(model_type, config=config)
+        elif 'bert' in model_type:
+            config = BertConfig.from_pretrained(model_type)
+            self.transformer = BertModel.from_pretrained(model_type, config=config)
+        else:
+            raise ValueError(f"Unsupported model type: {model_type}")
+        
         self.dropout = nn.Dropout(0.1)
         self.fc = nn.Linear(config.hidden_size, num_classes)
         
     def forward(self, input_ids, attention_mask):
-        outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
+        outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
         pooled_output = outputs.pooler_output
         x = self.dropout(pooled_output)
         logits = self.fc(x)
         return logits
 
 class InstructionClassifier:
-    def __init__(self, num_classes=20, max_length=128):
+    def __init__(self, num_classes=20, max_length=128, model_type='roberta-large'):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         warnings.filterwarnings("ignore", category=FutureWarning)
-        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-large', use_fast=True)
-        self.model = RoBERTaClassifier(num_classes).to(self.device)
+        
+        if 'roberta' in model_type:
+            self.tokenizer = RobertaTokenizer.from_pretrained(model_type, use_fast=True)
+        elif 'bert' in model_type:
+            self.tokenizer = BertTokenizer.from_pretrained(model_type, use_fast=True)
+        else:
+            raise ValueError(f"Unsupported model type: {model_type}")
+        
+        self.model = TransformerClassifier(num_classes, model_type).to(self.device)
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
+        self.model_type = model_type
         
     def calculate_class_distribution(self, labels):
         class_distribution = Counter(labels)
