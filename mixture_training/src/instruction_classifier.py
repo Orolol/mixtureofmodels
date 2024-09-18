@@ -155,10 +155,10 @@ class InstructionClassifier:
         new_labels = [class_mapping[label] for label in labels]
 
         # Update your label encoder
-        label_encoder = LabelEncoder()
-        encoded_labels = label_encoder.fit_transform(new_labels)
+        self.label_encoder = LabelEncoder()
+        encoded_labels = self.label_encoder.fit_transform(new_labels)
         
-        self.calculate_class_distribution(labels)
+        self.calculate_class_distribution(new_labels)
         
         
         # Split the data
