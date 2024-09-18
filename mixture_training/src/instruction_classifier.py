@@ -70,17 +70,16 @@ class TransformerClassifier(nn.Module):
         self.dropout = nn.Dropout(0.1)
         self.fc = nn.Linear(config.hidden_size, num_classes)
         
-        if self.transformer.pooler is None and 'roberta' in model_type:
-            # Add a custom pooler layer
-            self.pooler = nn.Linear(self.transformer.config.hidden_size, self.transformer.config.hidden_size)
-            self.pooler_activation = nn.Tanh()
         
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
         
+        # Use the last hidden state of the [CLS] token
         pooled_output = outputs.last_hidden_state[:, 0, :]
-        pooled_output = self.pooler(pooled_output)
-        pooled_output = self.pooler_activation(pooled_output)
+        
+        if hasattr(self, 'pooler'):
+            pooled_output = self.pooler(pooled_output)
+            pooled_output = self.pooler_activation(pooled_output)
         
         x = self.dropout(pooled_output)
         logits = self.fc(x)
