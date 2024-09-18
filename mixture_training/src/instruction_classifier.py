@@ -7,6 +7,7 @@ from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, get_line
 import warnings
 from torch.optim import AdamW
 import logging
+from collections import Counter
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,7 +79,20 @@ class InstructionClassifier:
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
         
+    def calculate_class_distribution(self, labels):
+        class_distribution = Counter(labels)
+        total_samples = len(labels)
+        
+        logger.info("Class Distribution:")
+        for class_label, count in class_distribution.items():
+            percentage = (count / total_samples) * 100
+            logger.info(f"Class {class_label}: {count} samples ({percentage:.2f}%)")
+        
+        return class_distribution
+        
     def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=5e-5, validation_split=0.2):
+        # Calculate and display class distribution
+        self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
         
         # Encode labels
