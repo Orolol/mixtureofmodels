@@ -8,6 +8,7 @@ import warnings
 from torch.optim import AdamW
 import logging
 from collections import Counter
+from imblearn.over_sampling import RandomOverSampler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ class InstructionClassifier:
         return class_distribution
         
     def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=5e-5, validation_split=0.2):
-        # Calculate and display class distribution
+        # Calculate and display original class distribution
         self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
         
@@ -104,16 +105,23 @@ class InstructionClassifier:
             texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
         
-        logger.info(f"Train set size: {len(train_texts)}, Validation set size: {len(val_texts)}")
+        # Apply oversampling to the training set
+        oversampler = RandomOverSampler(random_state=42)
+        train_texts_resampled, train_labels_resampled = oversampler.fit_resample(
+            np.array(train_texts).reshape(-1, 1), train_labels
+        )
+        train_texts_resampled = train_texts_resampled.flatten()
         
-        # Calculate and display class distribution for train and validation sets
-        logger.info("Train set class distribution:")
-        self.calculate_class_distribution(self.label_encoder.inverse_transform(train_labels))
+        logger.info(f"Train set size after oversampling: {len(train_texts_resampled)}")
+        logger.info("Train set class distribution after oversampling:")
+        self.calculate_class_distribution(self.label_encoder.inverse_transform(train_labels_resampled))
+        
+        logger.info(f"Validation set size: {len(val_texts)}")
         logger.info("Validation set class distribution:")
         self.calculate_class_distribution(self.label_encoder.inverse_transform(val_labels))
         
         # Create datasets
-        train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
+        train_dataset = InstructionDataset(train_texts_resampled, train_labels_resampled, self.tokenizer, self.max_length)
         val_dataset = InstructionDataset(val_texts, val_labels, self.tokenizer, self.max_length)
         
         # Create data loaders
