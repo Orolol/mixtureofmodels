@@ -75,7 +75,9 @@ class TransformerClassifier(nn.Module):
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
         
         # Use the last hidden state of the [CLS] token
-        pooled_output = outputs.last_hidden_state[:, 0, :]
+        # pooled_output = outputs.last_hidden_state[:, 0, :]
+        
+        pooled_output = (outputs.last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
         
         if hasattr(self, 'pooler'):
             pooled_output = self.pooler(pooled_output)
