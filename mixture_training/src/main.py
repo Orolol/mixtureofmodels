@@ -10,7 +10,7 @@ import pickle
 import yaml
 import os
 
-def main(num_epochs=10, batch_size=16):
+def main(num_epochs=10, batch_size=16, model_type='roberta-large'):
     # Load configuration
     # with open('../dataset_build/config/config.yaml', 'r') as file:
     #     config = yaml.safe_load(file)
@@ -42,15 +42,15 @@ def main(num_epochs=10, batch_size=16):
     X_train, X_test, y_train, y_test = split_data(features,labels)
     print("Data split")
 
-    # Train RoBERTa Instruction Classifier
-    print("Training RoBERTa Classifier")
-    roberta_classifier = InstructionClassifier(num_classes=len(np.unique(labels)))
-    roberta_classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
+    # Train Instruction Classifier
+    print(f"Training {model_type} Classifier")
+    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type)
+    classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
     
-    # Evaluate the RoBERTa model
-    y_pred_roberta = roberta_classifier.predict(X_test)
-    accuracy_roberta = np.mean(y_pred_roberta == y_test)
-    print(f"RoBERTa Test accuracy: {accuracy_roberta:.4f}")
+    # Evaluate the model
+    y_pred = classifier.predict(X_test)
+    accuracy = np.mean(y_pred == y_test)
+    print(f"{model_type} Test accuracy: {accuracy:.4f}")
 
     # Train XGBoost Instruction Classifier
     # print("Training XGBoost Classifier")
@@ -58,8 +58,8 @@ def main(num_epochs=10, batch_size=16):
     # xgb_classifier.train(features, labels)
 
     # Compare the models
-    print("\nModel Comparison:")
-    print(f"RoBERTa Accuracy: {accuracy_roberta:.4f}")
+    print("\nModel Performance:")
+    print(f"{model_type} Accuracy: {accuracy:.4f}")
     # print(f"XGBoost Accuracy: {xgb_classifier.model.score(X_test, y_test):.4f}")
 
     # You can choose which model to use based on the performance
@@ -75,7 +75,7 @@ def main(num_epochs=10, batch_size=16):
     model_executor = ModelExecutor(models)
 
     # Create MoEController
-    moe_controller = MoEController(roberta_classifier, model_recommender, model_executor)
+    moe_controller = MoEController(classifier, model_recommender, model_executor)
 
     # Test MoEController
     test_instructions = [
@@ -101,6 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train the MoE model")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
+    parser.add_argument("--model_type", type=str, default="roberta-large", choices=["roberta-large", "bert-base-uncased"], help="Type of model to use")
     args = parser.parse_args()
     
-    main(num_epochs=args.epochs, batch_size=args.batch_size)
+    main(num_epochs=args.epochs, batch_size=args.batch_size, model_type=args.model_type)
