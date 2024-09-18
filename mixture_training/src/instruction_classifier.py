@@ -2,6 +2,7 @@ from sklearn.metrics import f1_score, accuracy_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup
 import warnings
@@ -67,24 +68,22 @@ class TransformerClassifier(nn.Module):
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
         
-        self.dropout = nn.Dropout(0.4)
-        self.fc = nn.Linear(config.hidden_size, num_classes)
+        self.dropout1 = nn.Dropout(0.4)
+        self.fc1 = nn.Linear(self.transformer.config.hidden_size, 512)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.dropout2 = nn.Dropout(0.3)
+        self.fc2 = nn.Linear(512, num_classes)
         
         
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
-        
-        # Use the last hidden state of the [CLS] token
-        # pooled_output = outputs.last_hidden_state[:, 0, :]
-        
         pooled_output = (outputs.last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
-        
-        if hasattr(self, 'pooler'):
-            pooled_output = self.pooler(pooled_output)
-            pooled_output = self.pooler_activation(pooled_output)
-        
-        x = self.dropout(pooled_output)
-        logits = self.fc(x)
+        x = self.dropout1(pooled_output)
+        x = self.fc1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        logits = self.fc2(x)
         return logits
 
 class InstructionClassifier:
@@ -191,7 +190,7 @@ class InstructionClassifier:
         val_loader = DataLoader(val_dataset, batch_size=batch_size)
         
         # Initialize optimizer and scheduler
-        optimizer = AdamW(self.model.parameters(), lr=learning_rate)
+        optimizer = AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
         total_steps = len(train_loader) * num_epochs
         warmup_steps = int(0.1 * total_steps) 
         scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
@@ -201,10 +200,8 @@ class InstructionClassifier:
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
-            f1 = 0
-            accuracy = 0
             
-            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} current f1: {f1:.4f} current accuracy: {accuracy:.4f}")):
+            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
                 try:
                     input_ids = batch['input_ids'].to(self.device)
                     attention_mask = batch['attention_mask'].to(self.device)
@@ -223,7 +220,8 @@ class InstructionClassifier:
 
                     if batch_idx % 100 == 0 and batch_idx != 0:
                         # Calculate accuracy and F1 score
-                        _, preds = torch.max(outputs, dim=1)
+                        _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
+                        
                         accuracy = (preds == labels).float().mean()
                         f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
                         # print(labels.cpu().numpy(), preds.cpu().numpy())
@@ -250,6 +248,10 @@ class InstructionClassifier:
                         outputs = self.model(input_ids, attention_mask)
                         loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
                         total_val_loss += loss.item()
+                        _, preds = torch.max(outputs, dim=1)
+                        accuracy = (preds == labels).float().mean()
+                        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
                     except Exception as e:
                         logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
@@ -281,7 +283,7 @@ class InstructionClassifier:
                 attention_mask = batch['attention_mask'].to(self.device)
                 
                 outputs = self.model(input_ids, attention_mask)
-                _, preds = torch.max(outputs, dim=1)
+                _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
                 predictions.extend(preds.cpu().tolist())
         logger.info(f"Predictions: {predictions}")
         return self.label_encoder.inverse_transform(predictions)

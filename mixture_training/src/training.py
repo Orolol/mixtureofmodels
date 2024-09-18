@@ -44,7 +44,7 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
 
     # Initialize Instruction Classifier
     print(f"Initializing {model_type} Classifier")
-    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path)
+    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=256)
     
     if best_model_path:
         print(f"Loaded best model from {best_model_path}")
