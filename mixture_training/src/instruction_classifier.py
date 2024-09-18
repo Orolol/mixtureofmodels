@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaPooler
 import warnings
 from torch.optim import AdamW
 import logging
@@ -69,6 +69,10 @@ class TransformerClassifier(nn.Module):
         
         self.dropout = nn.Dropout(0.1)
         self.fc = nn.Linear(config.hidden_size, num_classes)
+        
+        if self.transformer.pooler is None and 'roberta' in model_type:
+            self.transformer.pooler = RobertaPooler(self.transformer.config)
+            self.transformer.pooler.apply(self.transformer._init_weights)
         
     def forward(self, input_ids, attention_mask):
         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
