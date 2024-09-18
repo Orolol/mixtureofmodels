@@ -1,3 +1,4 @@
+from sklearn.metrics import f1_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -74,7 +75,7 @@ class InstructionClassifier:
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
         
-    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=2e-5, validation_split=0.2):
+    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=5e-5, validation_split=0.2):
         logger.info(f"Starting training with {len(texts)} samples")
         
         # Encode labels
@@ -126,6 +127,13 @@ class InstructionClassifier:
 
                     if batch_idx % 100 == 0:
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}")
+                        # Calcul F1 score 
+                        y_pred = self.predict(train_texts)
+                        f1 = f1_score(train_labels, y_pred, average='weighted')
+                        logger.info(f"F1 score: {f1:.4f}")
+                        #print an example of data and prediction
+                        logger.info(f"Example data: {train_texts[0]}")
+                        logger.info(f"Example prediction: {y_pred[0]}")
 
                 except Exception as e:
                     logger.error(f"Error in training batch {batch_idx}: {str(e)}")
@@ -147,6 +155,10 @@ class InstructionClassifier:
                         outputs = self.model(input_ids, attention_mask)
                         loss = nn.CrossEntropyLoss()(outputs, labels)
                         total_val_loss += loss.item()
+                        # Calcul F1 score 
+                        y_pred = self.predict(val_texts)
+                        f1 = f1_score(val_labels, y_pred, average='weighted')
+                        logger.info(f"F1 score: {f1:.4f}")
                     except Exception as e:
                         logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
                         continue
