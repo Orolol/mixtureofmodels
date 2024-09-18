@@ -128,15 +128,10 @@ class InstructionClassifier:
                 
                     total_train_loss += loss.item()
 
-                    if batch_idx % 100 == 0:
+                    if batch_idx % 100 == 0 and batch_idx != 0:
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}")
-                        # Calcul F1 score 
-                        y_pred = self.predict(train_texts)
-                        f1 = f1_score(train_labels, y_pred, average='weighted')
-                        logger.info(f"F1 score: {f1:.4f}")
-                        #print an example of data and prediction
-                        logger.info(f"Example data: {train_texts[0]}")
-                        logger.info(f"Example prediction: {y_pred[0]}")
+
+
 
                 except Exception as e:
                     logger.error(f"Error in training batch {batch_idx}: {str(e)}")
@@ -154,14 +149,10 @@ class InstructionClassifier:
                         input_ids = batch['input_ids'].to(self.device)
                         attention_mask = batch['attention_mask'].to(self.device)
                         labels = batch['labels'].to(self.device)
-                        
                         outputs = self.model(input_ids, attention_mask)
                         loss = nn.CrossEntropyLoss()(outputs, labels)
                         total_val_loss += loss.item()
-                        # Calcul F1 score 
-                        y_pred = self.predict(val_texts)
-                        f1 = f1_score(val_labels, y_pred, average='weighted')
-                        logger.info(f"F1 score: {f1:.4f}")
+
                     except Exception as e:
                         logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
                         continue
@@ -181,9 +172,10 @@ class InstructionClassifier:
     
     def predict(self, texts):
         self.model.eval()
+        logger.info(f"Predicting {len(texts)} samples")
         dataset = InstructionDataset(texts, [0]*len(texts), self.tokenizer, self.max_length)
         dataloader = DataLoader(dataset, batch_size=1)
-        
+        logger.info(f"Dataloader: {dataloader}")
         predictions = []
         with torch.no_grad():
             for batch in dataloader:
@@ -193,7 +185,7 @@ class InstructionClassifier:
                 outputs = self.model(input_ids, attention_mask)
                 _, preds = torch.max(outputs, dim=1)
                 predictions.extend(preds.cpu().tolist())
-        
+        logger.info(f"Predictions: {predictions}")
         return self.label_encoder.inverse_transform(predictions)
     
     def predict_class(self, text):
