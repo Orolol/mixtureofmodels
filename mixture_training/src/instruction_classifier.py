@@ -133,7 +133,7 @@ class InstructionClassifier:
                         _, preds = torch.max(outputs, dim=1)
                         accuracy = (preds == labels).float().mean()
                         f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        
+                        print(labels.cpu().numpy(), preds.cpu().numpy())
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
 
