@@ -106,7 +106,7 @@ class InstructionClassifier:
         
         return class_distribution
         
-    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=5e-5, validation_split=0.2):
+    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=1e-5, validation_split=0.2):
         # Calculate and display original class distribution
         self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
@@ -145,7 +145,8 @@ class InstructionClassifier:
         # Initialize optimizer and scheduler
         optimizer = AdamW(self.model.parameters(), lr=learning_rate)
         total_steps = len(train_loader) * num_epochs
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
+        warmup_steps = int(0.1 * total_steps) 
+        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
         
         # Training loop
         best_val_loss = float('inf')
@@ -164,7 +165,7 @@ class InstructionClassifier:
                     loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
                     
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
                     optimizer.step()
                     scheduler.step()
                 
