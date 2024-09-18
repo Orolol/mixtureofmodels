@@ -10,7 +10,7 @@ import pickle
 import yaml
 import os
 
-def main():
+def main(num_epochs=10, batch_size=16):
     # Load configuration
     # with open('../dataset_build/config/config.yaml', 'r') as file:
     #     config = yaml.safe_load(file)
@@ -45,7 +45,7 @@ def main():
     # Train RoBERTa Instruction Classifier
     print("Training RoBERTa Classifier")
     roberta_classifier = InstructionClassifier(num_classes=len(np.unique(labels)))
-    roberta_classifier.train(X_train, y_train, num_epochs=5, batch_size=8)
+    roberta_classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
     
     # Evaluate the RoBERTa model
     y_pred_roberta = roberta_classifier.predict(X_test)
@@ -97,4 +97,10 @@ def main():
     moe_controller.update_models(test_instructions[0], actual_model_index, feedback)
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description="Train the MoE model")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
+    args = parser.parse_args()
+    
+    main(num_epochs=args.epochs, batch_size=args.batch_size)
