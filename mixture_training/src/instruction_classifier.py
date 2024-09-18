@@ -201,8 +201,10 @@ class InstructionClassifier:
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
+            f1 = 0
+            accuracy = 0
             
-            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
+            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} current f1: {f1:.4f} current accuracy: {accuracy:.4f}")):
                 try:
                     input_ids = batch['input_ids'].to(self.device)
                     attention_mask = batch['attention_mask'].to(self.device)
