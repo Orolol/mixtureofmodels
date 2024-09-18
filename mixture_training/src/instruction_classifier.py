@@ -8,7 +8,7 @@ import warnings
 from torch.optim import AdamW
 import logging
 from collections import Counter
-from imblearn.over_sampling import RandomOverSampler
+from sklearn.utils.class_weight import compute_class_weight
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -105,23 +105,22 @@ class InstructionClassifier:
             texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
         
-        # Apply oversampling to the training set
-        oversampler = RandomOverSampler(random_state=42)
-        train_texts_resampled, train_labels_resampled = oversampler.fit_resample(
-            np.array(train_texts).reshape(-1, 1), train_labels
-        )
-        train_texts_resampled = train_texts_resampled.flatten()
+        # Calculate class weights
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(train_labels), y=train_labels)
+        class_weights = torch.tensor(class_weights, dtype=torch.float).to(self.device)
         
-        logger.info(f"Train set size after oversampling: {len(train_texts_resampled)}")
-        logger.info("Train set class distribution after oversampling:")
-        self.calculate_class_distribution(self.label_encoder.inverse_transform(train_labels_resampled))
+        logger.info(f"Class weights: {class_weights}")
+        
+        logger.info(f"Train set size: {len(train_texts)}")
+        logger.info("Train set class distribution:")
+        self.calculate_class_distribution(self.label_encoder.inverse_transform(train_labels))
         
         logger.info(f"Validation set size: {len(val_texts)}")
         logger.info("Validation set class distribution:")
         self.calculate_class_distribution(self.label_encoder.inverse_transform(val_labels))
         
         # Create datasets
-        train_dataset = InstructionDataset(train_texts_resampled, train_labels_resampled, self.tokenizer, self.max_length)
+        train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
         val_dataset = InstructionDataset(val_texts, val_labels, self.tokenizer, self.max_length)
         
         # Create data loaders
@@ -147,7 +146,7 @@ class InstructionClassifier:
                 
                     self.model.zero_grad()
                     outputs = self.model(input_ids, attention_mask)
-                    loss = nn.CrossEntropyLoss()(outputs, labels)
+                    loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
                     
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
@@ -183,7 +182,7 @@ class InstructionClassifier:
                         attention_mask = batch['attention_mask'].to(self.device)
                         labels = batch['labels'].to(self.device)
                         outputs = self.model(input_ids, attention_mask)
-                        loss = nn.CrossEntropyLoss()(outputs, labels)
+                        loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
                         total_val_loss += loss.item()
 
                     except Exception as e:
