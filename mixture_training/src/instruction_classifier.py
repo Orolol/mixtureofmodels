@@ -101,10 +101,16 @@ class InstructionClassifier:
         
         # Split the data
         train_texts, val_texts, train_labels, val_labels = train_test_split(
-            texts, encoded_labels, test_size=validation_split, random_state=42
+            texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
         
         logger.info(f"Train set size: {len(train_texts)}, Validation set size: {len(val_texts)}")
+        
+        # Calculate and display class distribution for train and validation sets
+        logger.info("Train set class distribution:")
+        self.calculate_class_distribution(self.label_encoder.inverse_transform(train_labels))
+        logger.info("Validation set class distribution:")
+        self.calculate_class_distribution(self.label_encoder.inverse_transform(val_labels))
         
         # Create datasets
         train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
