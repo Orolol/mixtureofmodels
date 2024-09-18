@@ -10,7 +10,7 @@ import pickle
 import yaml
 import os
 
-def main(num_epochs=10, batch_size=16, model_type='roberta-large'):
+def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_path=None):
     # Load configuration
     # with open('../dataset_build/config/config.yaml', 'r') as file:
     #     config = yaml.safe_load(file)
@@ -42,10 +42,15 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large'):
     X_train, X_test, y_train, y_test = split_data(features,labels)
     print("Data split")
 
-    # Train Instruction Classifier
-    print(f"Training {model_type} Classifier")
-    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type)
-    classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
+    # Initialize Instruction Classifier
+    print(f"Initializing {model_type} Classifier")
+    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path)
+    
+    if best_model_path:
+        print(f"Loaded best model from {best_model_path}")
+    else:
+        print(f"Training {model_type} Classifier")
+        classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
     
     # Evaluate the model
     y_pred = classifier.predict(X_test)
@@ -102,6 +107,7 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
     parser.add_argument("--model_type", type=str, default="roberta-large", choices=["roberta-large", "bert-base-uncased", "roberta-base"], help="Type of model to use")
+    parser.add_argument("--best_model_path", type=str, default=None, help="Path to the best model to load (if available)")
     args = parser.parse_args()
     
-    main(num_epochs=args.epochs, batch_size=args.batch_size, model_type=args.model_type)
+    main(num_epochs=args.epochs, batch_size=args.batch_size, model_type=args.model_type, best_model_path=args.best_model_path)

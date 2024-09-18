@@ -88,7 +88,7 @@ class TransformerClassifier(nn.Module):
         return logits
 
 class InstructionClassifier:
-    def __init__(self, num_classes=20, max_length=128, model_type='roberta-large'):
+    def __init__(self, num_classes=20, max_length=128, model_type='roberta-large', best_model_path=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         warnings.filterwarnings("ignore", category=FutureWarning)
@@ -101,6 +101,9 @@ class InstructionClassifier:
             raise ValueError(f"Unsupported model type: {model_type}")
         
         self.model = TransformerClassifier(num_classes, model_type).to(self.device)
+        if best_model_path:
+            self.load_model(best_model_path)
+        
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
         self.model_type = model_type
@@ -248,3 +251,8 @@ class InstructionClassifier:
     
     def predict_class(self, text):
         return self.predict([text])[0]
+
+    def load_model(self, model_path):
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.model.eval()
+        logger.info(f"Loaded best model from {model_path}")
