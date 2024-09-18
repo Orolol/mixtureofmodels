@@ -101,7 +101,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train the MoE model")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
-    parser.add_argument("--model_type", type=str, default="roberta-large", choices=["roberta-large", "bert-base-uncased"], help="Type of model to use")
+    parser.add_argument("--model_type", type=str, default="roberta-large", choices=["roberta-large", "bert-base-uncased", "roberta-base"], help="Type of model to use")
     args = parser.parse_args()
     
     main(num_epochs=args.epochs, batch_size=args.batch_size, model_type=args.model_type)
