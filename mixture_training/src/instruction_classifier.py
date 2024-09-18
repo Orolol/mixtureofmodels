@@ -1,4 +1,4 @@
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -129,7 +129,12 @@ class InstructionClassifier:
                     total_train_loss += loss.item()
 
                     if batch_idx % 100 == 0 and batch_idx != 0:
-                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}")
+                        # Calculate accuracy and F1 score
+                        _, preds = torch.max(outputs, dim=1)
+                        accuracy = (preds == labels).float().mean()
+                        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+                        
+                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
 
 
