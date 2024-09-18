@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, get_linear_schedule_with_warmup
+import warnings
 from torch.optim import AdamW
 import logging
 
@@ -55,9 +56,10 @@ class InstructionDataset(Dataset):
 class RoBERTaClassifier(nn.Module):
     def __init__(self, num_classes):
         super(RoBERTaClassifier, self).__init__()
-        self.roberta = RobertaModel.from_pretrained('roberta-large')
+        config = RobertaConfig.from_pretrained('roberta-large')
+        self.roberta = RobertaModel.from_pretrained('roberta-large', config=config)
         self.dropout = nn.Dropout(0.1)
-        self.fc = nn.Linear(self.roberta.config.hidden_size, num_classes)
+        self.fc = nn.Linear(config.hidden_size, num_classes)
         
     def forward(self, input_ids, attention_mask):
         outputs = self.roberta(input_ids=input_ids, attention_mask=attention_mask)
@@ -70,7 +72,8 @@ class InstructionClassifier:
     def __init__(self, num_classes=20, max_length=128):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
-        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-large')
+        warnings.filterwarnings("ignore", category=FutureWarning)
+        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-large', use_fast=True)
         self.model = RoBERTaClassifier(num_classes).to(self.device)
         self.max_length = max_length
         self.label_encoder = LabelEncoder()
