@@ -313,17 +313,25 @@ class InstructionClassifier:
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
             compute_metrics=self.compute_metrics,
-            # You can pass callbacks here
+            compute_loss=self.compute_loss,
         )
         
         trainer.train()
     
-    def compute_metrics(self, p):
-        preds = np.argmax(p.predictions, axis=1)
-        labels = p.label_ids
-        f1 = f1_score(labels, preds, average='weighted')
-        accuracy = (preds == labels).mean()
-        return {'accuracy': accuracy, 'f1': f1}
+    def compute_metrics(self, eval_pred):
+        logits, labels = eval_pred
+        predictions = np.argmax(logits, axis=-1)
+        accuracy = accuracy_score(labels, predictions)
+        f1 = f1_score(labels, predictions, average='weighted')
+        return {"accuracy": accuracy, "f1": f1}
+
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.pop("labels")
+        outputs = model(**inputs)
+        logits = outputs.logits
+        loss_fct = nn.CrossEntropyLoss()
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        return (loss, outputs) if return_outputs else loss
     
     def predict(self, texts):
         self.model.eval()
