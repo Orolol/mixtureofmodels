@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaForSequenceClassification, BertForSequenceClassification
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaForSequenceClassification, BertForSequenceClassification, Trainer, TrainingArguments
 import warnings
 from torch.optim import AdamW
 import logging
@@ -203,94 +203,127 @@ class InstructionClassifier:
         train_dataset = InstructionDataset(train_texts, train_labels, self.tokenizer, self.max_length)
         val_dataset = InstructionDataset(val_texts, val_labels, self.tokenizer, self.max_length)
         
-        # Create data loaders
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size)
+        # # Create data loaders
+        # train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        # val_loader = DataLoader(val_dataset, batch_size=batch_size)
         
-        # Initialize optimizer and scheduler
-        optimizer = AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
-        total_steps = len(train_loader) * num_epochs
-        warmup_steps = int(0.1 * total_steps) 
-        #scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
-        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
+        # # Initialize optimizer and scheduler
+        # optimizer = AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
+        # total_steps = len(train_loader) * num_epochs
+        # warmup_steps = int(0.1 * total_steps) 
+        # #scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+        # scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
         
-        # Training loop
-        best_val_loss = float('inf')
-        for epoch in range(num_epochs):
-            self.model.train()
-            total_train_loss = 0
+        # # Training loop
+        # best_val_loss = float('inf')
+        # for epoch in range(num_epochs):
+        #     self.model.train()
+        #     total_train_loss = 0
             
-            for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
-                try:
-                    input_ids = batch['input_ids'].to(self.device)
-                    attention_mask = batch['attention_mask'].to(self.device)
-                    labels = batch['labels'].to(self.device)
+        #     for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
+        #         try:
+        #             input_ids = batch['input_ids'].to(self.device)
+        #             attention_mask = batch['attention_mask'].to(self.device)
+        #             labels = batch['labels'].to(self.device)
                 
-                    self.model.zero_grad()
-                    outputs = self.model(input_ids, attention_mask)
-                    loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
+        #             self.model.zero_grad()
+        #             outputs = self.model(input_ids, attention_mask)
+        #             loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
                     
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
-                    optimizer.step()
-                    scheduler.step()
+        #             loss.backward()
+        #             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
+        #             optimizer.step()
+        #             scheduler.step()
                 
-                    total_train_loss += loss.item()
+        #             total_train_loss += loss.item()
 
-                    if batch_idx % 100 == 0 and batch_idx != 0:
-                        # Calculate accuracy and F1 score
-                        _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
+        #             if batch_idx % 100 == 0 and batch_idx != 0:
+        #                 # Calculate accuracy and F1 score
+        #                 _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
                         
-                        accuracy = (preds == labels).float().mean()
-                        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        # print(labels.cpu().numpy(), preds.cpu().numpy())
-                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+        #                 accuracy = (preds == labels).float().mean()
+        #                 f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+        #                 # print(labels.cpu().numpy(), preds.cpu().numpy())
+        #                 logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
 
 
-                except Exception as e:
-                    logger.error(f"Error in training batch {batch_idx}: {str(e)}")
-                    continue
+        #         except Exception as e:
+        #             logger.error(f"Error in training batch {batch_idx}: {str(e)}")
+        #             continue
 
-            avg_train_loss = total_train_loss / len(train_loader)
+        #     avg_train_loss = total_train_loss / len(train_loader)
             
-            # Validation
-            self.model.eval()
-            total_val_loss = 0
+        #     # Validation
+        #     self.model.eval()
+        #     total_val_loss = 0
             
-            with torch.no_grad():
-                for batch_idx, batch in enumerate(val_loader):
-                    try:
-                        input_ids = batch['input_ids'].to(self.device)
-                        attention_mask = batch['attention_mask'].to(self.device)
-                        labels = batch['labels'].to(self.device)
-                        outputs = self.model(input_ids, attention_mask)
-                        loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
-                        total_val_loss += loss.item()
-                        _, preds = torch.max(outputs, dim=1)
-                        accuracy = (preds == labels).float().mean()
-                        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        # logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+        #     with torch.no_grad():
+        #         for batch_idx, batch in enumerate(val_loader):
+        #             try:
+        #                 input_ids = batch['input_ids'].to(self.device)
+        #                 attention_mask = batch['attention_mask'].to(self.device)
+        #                 labels = batch['labels'].to(self.device)
+        #                 outputs = self.model(input_ids, attention_mask)
+        #                 loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
+        #                 total_val_loss += loss.item()
+        #                 _, preds = torch.max(outputs, dim=1)
+        #                 accuracy = (preds == labels).float().mean()
+        #                 f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+        #                 # logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
-                    except Exception as e:
-                        logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
-                        continue
+        #             except Exception as e:
+        #                 logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
+        #                 continue
             
-            avg_val_loss = total_val_loss / len(val_loader)
+        #     avg_val_loss = total_val_loss / len(val_loader)
             
-            # Average F1 Score and Accuracy
-            avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-            avg_accuracy = (preds == val_labels).float().mean() 
-            logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
+        #     # Average F1 Score and Accuracy
+        #     avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+        #     avg_accuracy = (preds == val_labels).float().mean() 
+        #     logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
             
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                torch.save(self.model.state_dict(), 'best_roberta_model.pth')
-                logger.info("Saved best model.")
+        #     if avg_val_loss < best_val_loss:
+        #         best_val_loss = avg_val_loss
+        #         torch.save(self.model.state_dict(), 'best_roberta_model.pth')
+        #         logger.info("Saved best model.")
         
-        # Load the best model
-        self.model.load_state_dict(torch.load('best_roberta_model.pth'))
-        logger.info("Training completed.")
+        # # Load the best model
+        # self.model.load_state_dict(torch.load('best_roberta_model.pth'))
+        # logger.info("Training completed.")
+        
+        training_args = TrainingArguments(
+            output_dir='./results',
+            num_train_epochs=num_epochs,
+            per_device_train_batch_size=batch_size,
+            per_device_eval_batch_size=batch_size,
+            learning_rate=learning_rate,
+            evaluation_strategy="epoch",
+            save_strategy="epoch",
+            logging_dir='./logs',
+            logging_steps=100,
+            load_best_model_at_end=True,
+            metric_for_best_model='f1',
+            greater_is_better=True
+        )
+        
+        trainer = Trainer(
+            model=self.model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=val_dataset,
+            compute_metrics=self.compute_metrics,
+            # You can pass callbacks here
+        )
+        
+        trainer.train()
+    
+    def compute_metrics(self, p):
+        preds = np.argmax(p.predictions, axis=1)
+        labels = p.label_ids
+        f1 = f1_score(labels, preds, average='weighted')
+        accuracy = (preds == labels).mean()
+        return {'accuracy': accuracy, 'f1': f1}
     
     def predict(self, texts):
         self.model.eval()
