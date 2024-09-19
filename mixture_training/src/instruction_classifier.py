@@ -3,8 +3,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaForSequenceClassification, BertForSequenceClassification
 import warnings
 from torch.optim import AdamW
 import logging
@@ -56,35 +57,52 @@ class InstructionDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
+# class TransformerClassifier(nn.Module):
+#     def __init__(self, num_classes, model_type='roberta-large'):
+#         super(TransformerClassifier, self).__init__()
+#         if 'roberta' in model_type:
+#             config = RobertaConfig.from_pretrained(model_type)
+#             self.transformer = RobertaModel.from_pretrained(model_type, config=config)
+#         elif 'bert' in model_type:
+#             config = BertConfig.from_pretrained(model_type)
+#             self.transformer = BertModel.from_pretrained(model_type, config=config)
+#         else:
+#             raise ValueError(f"Unsupported model type: {model_type}")
+        
+#         self.dropout1 = nn.Dropout(0.4)
+#         self.fc1 = nn.Linear(self.transformer.config.hidden_size, 512)
+#         self.bn1 = nn.BatchNorm1d(512)
+#         self.dropout2 = nn.Dropout(0.3)
+#         self.fc2 = nn.Linear(512, num_classes)
+        
+        
+#     def forward(self, input_ids, attention_mask):
+#         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
+#         pooled_output = (outputs.last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
+#         x = self.dropout1(pooled_output)
+#         x = self.fc1(x)
+#         x = self.bn1(x)
+#         x = F.relu(x)
+#         x = self.dropout2(x)
+#         logits = self.fc2(x)
+#         return logits
+
 class TransformerClassifier(nn.Module):
     def __init__(self, num_classes, model_type='roberta-large'):
         super(TransformerClassifier, self).__init__()
         if 'roberta' in model_type:
-            config = RobertaConfig.from_pretrained(model_type)
-            self.transformer = RobertaModel.from_pretrained(model_type, config=config)
+            self.model = RobertaForSequenceClassification.from_pretrained(model_type, num_labels=num_classes)
         elif 'bert' in model_type:
-            config = BertConfig.from_pretrained(model_type)
-            self.transformer = BertModel.from_pretrained(model_type, config=config)
+            self.model = BertForSequenceClassification.from_pretrained(model_type, num_labels=num_classes)
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
         
-        self.dropout1 = nn.Dropout(0.4)
-        self.fc1 = nn.Linear(self.transformer.config.hidden_size, 512)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.dropout2 = nn.Dropout(0.3)
-        self.fc2 = nn.Linear(512, num_classes)
-        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
         
     def forward(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
-        pooled_output = (outputs.last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
-        x = self.dropout1(pooled_output)
-        x = self.fc1(x)
-        x = self.bn1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
-        logits = self.fc2(x)
-        return logits
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
+        return outputs.logits
 
 class InstructionClassifier:
     def __init__(self, num_classes=20, max_length=128, model_type='roberta-large', best_model_path=None):
@@ -193,7 +211,8 @@ class InstructionClassifier:
         optimizer = AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
         total_steps = len(train_loader) * num_epochs
         warmup_steps = int(0.1 * total_steps) 
-        scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+        #scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps)
+        scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs)
         
         # Training loop
         best_val_loss = float('inf')
