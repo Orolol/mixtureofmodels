@@ -24,12 +24,11 @@ def preprocess_text(text):
     text = text.lower()
     # Remove special characters and digits
     text = re.sub(r'[^a-zA-Z\s]', '', text)
-    # Tokenize
-    # tokens = word_tokenize(text)
     # Remove stopwords
     stop_words = set(stopwords.words('english'))
-    tokens = [token for token in tokens if token not in stop_words]
-    return ' '.join(tokens)
+    # remove stop words
+    text = ' '.join([word for word in text.split() if word not in stop_words])
+    return text
 
 def extract_features(df):
     # Preprocess the instruction text

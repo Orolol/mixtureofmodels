@@ -39,7 +39,7 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
     print(labels.shape)
             
     print("Data preprocessed")
-    X_train, X_test, y_train, y_test = split_data(features,labels, validation_split=0.1)
+    X_train, X_test, y_train, y_test = split_data(features,labels, test_size=0.1)
     print("Data split")
 
     # Initialize Instruction Classifier
