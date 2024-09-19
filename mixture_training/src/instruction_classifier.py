@@ -11,7 +11,6 @@ from torch.optim import AdamW
 import logging
 from collections import Counter
 from sklearn.utils.class_weight import compute_class_weight
-from imblearn.over_sampling import SMOTE
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -149,52 +148,47 @@ class InstructionClassifier:
         logger.info(f"Starting training with {len(texts)} samples")
         
                 # Encode labels
-        # class_mapping = {
-        #     "natural language processing and understanding": "natural language processing and understanding",
-        #     "information processing and integration": "information processing and integration",
-        #     "mathematical ability": "mathematical ability",
-        #     "problem solving and support": "problem solving and support",
-        #     "programming and software development": "programming and software development",
-        #     "data science and analytics": "data science and analytics",
-        #     "open knowledge q&a": "General Knowledge and Q&A",
-        #     "life knowledge and skills": "General Knowledge and Q&A",
-        #     "humanities, history, philosophy, and sociology knowledge": "General Knowledge and Q&A",
-        #     "stem knowledge": "General Knowledge and Q&A",
-        #     "literary creation and artistic knowledge": "Creative and Artistic Endeavors",
-        #     "creativity and design": "Creative and Artistic Endeavors",
-        #     "linguistic knowledge, multilingual and multicultural understanding": "Language and Culture",
-        #     "financial, financial and business knowledge": "Business and Finance",
-        #     "project and task management": "Business and Finance",
-        #     "logic and reasoning": "Analysis and Reasoning",
-        #     "analysis and research": "Analysis and Reasoning",
-        #     "medical, pharmaceutical and health knowledge": "Specialized Knowledge",
-        #     "psychological knowledge": "Specialized Knowledge",
-        #     "legal knowledge": "Specialized Knowledge",
-        #     "education and consulting": "Education and Communication",
-        #     "communication and social media": "Education and Communication",
-        #     "open task completion": "Task Management",
-        #     "task generation": "Task Management"
-        # }
+        class_mapping = {
+            "natural language processing and understanding": "natural language processing and understanding",
+            "information processing and integration": "information processing and integration",
+            "mathematical ability": "mathematical ability",
+            "problem solving and support": "problem solving and support",
+            "programming and software development": "programming and software development",
+            "data science and analytics": "data science and analytics",
+            "open knowledge q&a": "General Knowledge and Q&A",
+            "life knowledge and skills": "General Knowledge and Q&A",
+            "humanities, history, philosophy, and sociology knowledge": "General Knowledge and Q&A",
+            "stem knowledge": "General Knowledge and Q&A",
+            "literary creation and artistic knowledge": "Creative and Artistic Endeavors",
+            "creativity and design": "Creative and Artistic Endeavors",
+            "linguistic knowledge, multilingual and multicultural understanding": "Language and Culture",
+            "financial, financial and business knowledge": "Business and Finance",
+            "project and task management": "Business and Finance",
+            "logic and reasoning": "Analysis and Reasoning",
+            "analysis and research": "Analysis and Reasoning",
+            "medical, pharmaceutical and health knowledge": "Specialized Knowledge",
+            "psychological knowledge": "Specialized Knowledge",
+            "legal knowledge": "Specialized Knowledge",
+            "education and consulting": "Education and Communication",
+            "communication and social media": "Education and Communication",
+            "open task completion": "Task Management",
+            "task generation": "Task Management"
+        }
 
-        # # Apply the mapping to your labels
-        # new_labels = [class_mapping[label] for label in labels]
+        # Apply the mapping to your labels
+        new_labels = [class_mapping[label] for label in labels]
 
-        # # Update your label encoder
-        # self.label_encoder = LabelEncoder()
-        # encoded_labels = self.label_encoder.fit_transform(new_labels)
+        # Update your label encoder
+        self.label_encoder = LabelEncoder()
+        encoded_labels = self.label_encoder.fit_transform(new_labels)
         
         # Encode labels
-        self.label_encoder.fit(labels)
-        encoded_labels = self.label_encoder.transform(labels)
+        # self.label_encoder.fit(labels)
+        # encoded_labels = self.label_encoder.transform(labels)
         
-        # Oversample using SMOTE
-        smote = SMOTE(random_state=42)
-        X_resampled, y_resampled = smote.fit_resample(np.array(texts).reshape(-1, 1), encoded_labels)
-        X_resampled = X_resampled.flatten()
-        
-        # Proceed with train-validation split on resampled data
+        # Split the data
         train_texts, val_texts, train_labels, val_labels = train_test_split(
-            X_resampled, y_resampled, test_size=validation_split, random_state=42, stratify=y_resampled
+            texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
         
         # Calculate class weights
