@@ -118,7 +118,7 @@ class InstructionClassifier:
         
         return class_distribution
         
-    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=1e-5, validation_split=0.2):
+    def train(self, texts, labels, num_epochs=5, batch_size=8, learning_rate=1e-5, validation_split=0.05):
         # Calculate and display original class distribution
         self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
@@ -251,7 +251,7 @@ class InstructionClassifier:
                         _, preds = torch.max(outputs, dim=1)
                         accuracy = (preds == labels).float().mean()
                         f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+                        # logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
                     except Exception as e:
                         logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
@@ -259,7 +259,10 @@ class InstructionClassifier:
             
             avg_val_loss = total_val_loss / len(val_loader)
             
-            logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}')
+            # Average F1 Score and Accuracy
+            avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+            avg_accuracy = (preds == val_labels).float().mean() 
+            logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
             
             if avg_val_loss < best_val_loss:
                 best_val_loss = avg_val_loss

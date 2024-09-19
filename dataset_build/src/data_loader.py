@@ -10,15 +10,15 @@ def load_datasets(dataset_configs, max_iter):
     login(token=get_huggingface_token())
     for config in dataset_configs:
         if config['path'] == 'BAAI/Infinity-Instruct':
-            dataset = load_dataset('BAAI/Infinity-Instruct', '0625', split='train')
+            dataset = load_dataset('BAAI/Infinity-Instruct', 'Gen', split='train')
         else:
             dataset = load_dataset(config['path'])
         
         # Process the dataset to extract relevant information
         processed_dataset = []
         for i, item in enumerate(dataset):
-            if i >= max_iter:  # Process only the first 5 items
-                break
+            #if i >= max_iter:  # Process only the first 5 items
+             #   break
             print(f"Processing item {i+1}/{max_iter} : {item['id']}", end="\r", flush=True)
             
             conversation = item['conversations']

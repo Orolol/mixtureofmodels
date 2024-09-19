@@ -39,12 +39,12 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
     print(labels.shape)
             
     print("Data preprocessed")
-    X_train, X_test, y_train, y_test = split_data(features,labels)
+    X_train, X_test, y_train, y_test = split_data(features,labels, validation_split=0.1)
     print("Data split")
 
     # Initialize Instruction Classifier
     print(f"Initializing {model_type} Classifier")
-    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=256)
+    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=128)
     
     if best_model_path:
         print(f"Loaded best model from {best_model_path}")
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train the MoE model")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
-    parser.add_argument("--model_type", type=str, default="roberta-large", choices=["roberta-large", "bert-base-uncased", "roberta-base"], help="Type of model to use")
+    parser.add_argument("--model_type", type=str, default="bert-base-uncased", choices=["roberta-large", "bert-base-uncased", "roberta-base"], help="Type of model to use")
     parser.add_argument("--best_model_path", type=str, default=None, help="Path to the best model to load (if available)")
     args = parser.parse_args()
     
