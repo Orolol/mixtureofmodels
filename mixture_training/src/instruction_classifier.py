@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import Dataset, DataLoader
-from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaForSequenceClassification, BertForSequenceClassification, Trainer, TrainingArguments
+from transformers import RobertaTokenizer, RobertaModel, RobertaConfig, TrainerCallback, BertTokenizer, BertModel, BertConfig, get_linear_schedule_with_warmup, RobertaForSequenceClassification, BertForSequenceClassification, Trainer, TrainingArguments
 import warnings
 from torch.optim import AdamW
 import logging
@@ -18,6 +18,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import numpy as np
+
+class PrintMetricsCallback(TrainerCallback):
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if logs is not None:
+            if state.global_step % 100 == 0:
+                logger.info(f"Step {state.global_step}: {logs}")
 
 class InstructionDataset(Dataset):
     def __init__(self, texts, labels, tokenizer, max_length):
@@ -100,9 +106,9 @@ class TransformerClassifier(nn.Module):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
         
-    def forward(self, input_ids, attention_mask):
-        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-        return outputs.logits
+    def forward(self, input_ids, attention_mask, labels=None):
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        return outputs
 
 class InstructionClassifier:
     def __init__(self, num_classes=20, max_length=128, model_type='roberta-large', best_model_path=None):
@@ -301,7 +307,7 @@ class InstructionClassifier:
             evaluation_strategy="epoch",
             save_strategy="epoch",
             logging_dir='./logs',
-            logging_steps=100,
+            logging_steps=10,
             load_best_model_at_end=True,
             metric_for_best_model='f1',
             greater_is_better=True
@@ -313,25 +319,17 @@ class InstructionClassifier:
             train_dataset=train_dataset,
             eval_dataset=val_dataset,
             compute_metrics=self.compute_metrics,
-            compute_loss=self.compute_loss,
         )
         
         trainer.train()
     
-    def compute_metrics(self, eval_pred):
-        logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
-        accuracy = accuracy_score(labels, predictions)
-        f1 = f1_score(labels, predictions, average='weighted')
-        return {"accuracy": accuracy, "f1": f1}
-
-    def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.pop("labels")
-        outputs = model(**inputs)
-        logits = outputs.logits
-        loss_fct = nn.CrossEntropyLoss()
-        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
-        return (loss, outputs) if return_outputs else loss
+    def compute_metrics(self, p):
+        preds = np.argmax(p.predictions, axis=1)
+        labels = p.label_ids
+        f1 = f1_score(labels, preds, average='weighted')
+        accuracy = (preds == labels).mean()
+        logger.info(f"Accuracy: {accuracy}, F1: {f1}")
+        return {'accuracy': accuracy, 'f1': f1}
     
     def predict(self, texts):
         self.model.eval()
