@@ -11,6 +11,8 @@ from torch.optim import AdamW
 import logging
 from collections import Counter
 from sklearn.utils.class_weight import compute_class_weight
+from nltk.corpus import stopwords
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +33,19 @@ class InstructionDataset(Dataset):
         self.labels = labels
         self.tokenizer = tokenizer
         self.max_length = max_length
+    
+    def preprocess_text(self, text):
+        # convert to string
+        text = str(text)
+        # Convert to lowercase
+        text = text.lower()
+        # Remove special characters and digits
+        text = re.sub(r'[^a-zA-Z\s]', '', text)
+        # Remove stopwords
+        stop_words = set(stopwords.words('english'))
+        # remove stop words
+        text = ' '.join([word for word in text.split() if word not in stop_words])
+        return text
 
     def __len__(self):
         return len(self.texts)
@@ -38,6 +53,7 @@ class InstructionDataset(Dataset):
     def __getitem__(self, idx):
         try:
             text = str(self.texts.iloc[idx] if hasattr(self.texts, 'iloc') else self.texts[idx])
+            text = self.preprocess_text(text)
             label = self.labels[idx]
         except IndexError as e:
             logger.error(f"Index {idx} is out of bounds. Dataset length: {len(self.texts)}")
@@ -147,44 +163,10 @@ class InstructionClassifier:
         self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
         
-                # Encode labels
-        label_mapping = {
-            "information processing and integration": "Technical Assistance & Coding Help",
-            "programming and software development": "Technical Assistance & Coding Help",
-            "data science and analytics": "Technical Assistance & Coding Help",
-            "natural language processing and understanding": "Technical Assistance & Coding Help",
-            "mathematical ability": "Technical Assistance & Coding Help",
-            "logic and reasoning": "Technical Assistance & Coding Help",
-            "analysis and research": "Technical Assistance & Coding Help",
-            
-            "problem solving and support": "Information Retrieval & General Knowledge",
-            "open knowledge q&a": "Information Retrieval & General Knowledge",
-            "life knowledge and skills": "Information Retrieval & General Knowledge",
-            "humanities, history, philosophy, and sociology knowledge": "Information Retrieval & General Knowledge",
-            "stem knowledge": "Information Retrieval & General Knowledge",
-            
-            "literary creation and artistic knowledge": "Creative Content Generation",
-            "creativity and design": "Creative Content Generation",
-            
-            "project and task management": "Professional & Specialized Expertise",
-            "financial, financial and business knowledge": "Professional & Specialized Expertise",
-            "medical, pharmaceutical and health knowledge": "Professional & Specialized Expertise",
-            "psychological knowledge": "Professional & Specialized Expertise",
-            "legal knowledge": "Professional & Specialized Expertise",
-            
-            "linguistic knowledge, multilingual and multicultural understanding": "Communication & Task Management",
-            "education and consulting": "Communication & Task Management",
-            "communication and social media": "Communication & Task Management",
-            "open task completion": "Communication & Task Management",
-            "task generation": "Communication & Task Management"
-        }
-
-        # Apply the mapping to your labels
-        new_labels = [label_mapping[label] for label in labels]
 
         # Update your label encoder
         self.label_encoder = LabelEncoder()
-        encoded_labels = self.label_encoder.fit_transform(new_labels)
+        encoded_labels = self.label_encoder.fit_transform(labels)
         
         # Encode labels
         # self.label_encoder.fit(labels)

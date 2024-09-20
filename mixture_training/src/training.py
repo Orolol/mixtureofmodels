@@ -12,7 +12,7 @@ import pickle
 import yaml
 import os
 
-def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_path=None):
+def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_path=None, use_llm=False):
     # Load configuration
     # with open('../dataset_build/config/config.yaml', 'r') as file:
     #     config = yaml.safe_load(file)
@@ -44,16 +44,16 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
     X_train, X_test, y_train, y_test = split_data(features,labels, test_size=0.1)
     print("Data split")
     
-    print("Initializing LLM Classifier")
-    classifier = LLMClassifier()
-    
-    # Evaluate the model
-    print("Evaluating LLM Classifier")
-    y_pred = classifier.predict(X_test[:100])
-    accuracy = np.mean(y_pred == y_test[:100])
-    llm_f1 = f1_score(y_test[:100], y_pred, average='weighted')
-    print(f"LLM Classifier Test accuracy: {accuracy:.4f}")
-    print(f"LLM Classifier Test F1 Score: {llm_f1:.4f}")
+    if use_llm:
+        print("Initializing LLM Classifier")
+        classifier = LLMClassifier()
+        # Evaluate the model
+        print("Evaluating LLM Classifier")
+        y_pred = classifier.predict(X_test[:100])
+        accuracy = np.mean(y_pred == y_test[:100])
+        llm_f1 = f1_score(y_test[:100], y_pred, average='weighted')
+        print(f"LLM Classifier Test accuracy: {accuracy:.4f}")
+        print(f"LLM Classifier Test F1 Score: {llm_f1:.4f}")
 
     # Initialize Instruction Classifier
     print(f"Initializing {model_type} Classifier")
@@ -121,6 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training")
     parser.add_argument("--model_type", type=str, default="bert-base-uncased", choices=["roberta-large", "bert-base-uncased", "roberta-base"], help="Type of model to use")
     parser.add_argument("--best_model_path", type=str, default=None, help="Path to the best model to load (if available)")
+    parser.add_argument("--use_llm", type=bool, default=False, help="Use LLM Classifier")
     args = parser.parse_args()
     
     main(num_epochs=args.epochs, batch_size=args.batch_size, model_type=args.model_type, best_model_path=args.best_model_path)

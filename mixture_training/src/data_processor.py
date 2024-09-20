@@ -17,24 +17,12 @@ nltk.download('vader_lexicon')
 def load_data(file_path):
     return pd.read_csv(file_path)
 
-def preprocess_text(text):
-    # convert to string
-    text = str(text)
-    # Convert to lowercase
-    text = text.lower()
-    # Remove special characters and digits
-    text = re.sub(r'[^a-zA-Z\s]', '', text)
-    # Remove stopwords
-    stop_words = set(stopwords.words('english'))
-    # remove stop words
-    text = ' '.join([word for word in text.split() if word not in stop_words])
-    return text
+
 
 def extract_features(df):
     # Preprocess the instruction text
     print("Preprocessing text")
     df['instruction'] = df['instruction'].astype(str)
-    df['processed_instruction'] = df['instruction'].apply(preprocess_text)
     
     label_mapping = {
     "information processing and integration": "Technical Assistance & Coding Help",
@@ -105,12 +93,15 @@ def extract_features(df):
     #         'flesch_kincaid_grade', 'flesch_reading_ease', 'avg_word_length', 'unique_word_count']].values
     # ))
     
-    return df['processed_instruction'], df['category']
+    return df['instruction'], df['category']
 
 def preprocess_data(df):
     # Remove rows with non string instruction or category
     df = df[df['instruction'].apply(lambda x: isinstance(x, str))]
     df = df[df['category'].apply(lambda x: isinstance(x, str))]
+    
+    # keep only english
+    df = df[df['language'] == 'en']
     
     # Extract features and labels
     features, labels = extract_features(df)
