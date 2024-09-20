@@ -221,6 +221,8 @@ class InstructionClassifier:
                     self.model.zero_grad()
                     results = self.model(input_ids, attention_mask, labels)
                     loss = results.loss
+                    # use class_weights
+                    loss = loss * class_weights
                     outputs = results.logits
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
