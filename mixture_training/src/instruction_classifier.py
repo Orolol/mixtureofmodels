@@ -243,12 +243,8 @@ class InstructionClassifier:
                     # validte every 20% of the training data
                     if batch_idx % (len(train_loader) * 0.2) == 0 and batch_idx != 0:
                         avg_train_loss = total_train_loss / len(train_loader)
-                        val_preds, val_loss = self.validate(val_texts, val_labels)
-                        
-                        # Average F1 Score and Accuracy
-                        avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        avg_accuracy = (preds == val_labels).float().mean() 
-                        logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
+                        val_loss, f1, accuracy = self.validate(val_texts, val_labels)
+                        logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, F1 Score: {f1:.4f}, Accuracy: {accuracy:.4f}')
                         
                         if val_loss < best_val_loss:
                             best_val_loss = val_loss
@@ -265,24 +261,30 @@ class InstructionClassifier:
         self.model.load_state_dict(torch.load('best_roberta_model.pth'))
         logger.info("Training completed.")
         
-    def validate(self, texts, labels):
+    def validate(self, texts, labels, class_weights):
+        logger.info(f"Validating {len(texts)} samples")
         self.model.eval()
         dataset = InstructionDataset(texts, labels, self.tokenizer, self.max_length)
         dataloader = DataLoader(dataset, batch_size=1)
         predictions = []
         total_loss = 0
+        f1 = 0
+        accuracy = 0
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in tqdm(dataloader, desc="Validating"):
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
                 results = self.model(input_ids, attention_mask, labels)
                 loss = results.loss
+                loss = loss * class_weights
                 total_loss += loss.item()
-                outputs = results.logits
-                _, preds = torch.max(outputs, dim=1)
-                predictions.extend(preds.cpu().tolist())
-        return self.label_encoder.inverse_transform(predictions), total_loss / len(dataloader)
+                
+                _, preds = torch.max(F.softmax(results.logits, dim=1), dim=1)
+                f1 += f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+                accuracy += (preds == labels).float().mean()
+
+        return total_loss / len(dataloader), f1 / len(dataloader), accuracy / len(dataloader)
     
     def compute_metrics(self, p):
         preds = np.argmax(p.predictions, axis=1)
