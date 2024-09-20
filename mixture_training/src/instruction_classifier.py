@@ -222,8 +222,6 @@ class InstructionClassifier:
                     results = self.model(input_ids, attention_mask, labels)
                     loss = results.loss
                     outputs = results.logits
-                    #loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
-                    
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
                     optimizer.step()
@@ -240,76 +238,49 @@ class InstructionClassifier:
                         # print(labels.cpu().numpy(), preds.cpu().numpy())
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
+                    # validte every 20% of the training data
+                    if batch_idx % (len(train_loader) * 0.2) == 0 and batch_idx != 0:
+                        avg_train_loss = total_train_loss / len(train_loader)
+                        val_preds, val_loss = self.validate(val_texts, val_labels)
+                        
+                        # Average F1 Score and Accuracy
+                        avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
+                        avg_accuracy = (preds == val_labels).float().mean() 
+                        logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
+                        
+                        if val_loss < best_val_loss:
+                            best_val_loss = val_loss
+                            torch.save(self.model.state_dict(), 'best_roberta_model.pth')
+                            logger.info("Saved best model.")
 
 
                 except Exception as e:
                     logger.error(f"Error in training batch {batch_idx}: {str(e)}")
                     continue
 
-            avg_train_loss = total_train_loss / len(train_loader)
-            
-            # Validation
-            self.model.eval()
-            total_val_loss = 0
-            
-            with torch.no_grad():
-                for batch_idx, batch in enumerate(val_loader):
-                    try:
-                        input_ids = batch['input_ids'].to(self.device)
-                        attention_mask = batch['attention_mask'].to(self.device)
-                        labels = batch['labels'].to(self.device)
-                        outputs = self.model(input_ids, attention_mask)
-                        loss = nn.CrossEntropyLoss(weight=class_weights)(outputs, labels)
-                        total_val_loss += loss.item()
-                        _, preds = torch.max(outputs, dim=1)
-                        accuracy = (preds == labels).float().mean()
-                        f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        # logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
-
-                    except Exception as e:
-                        logger.error(f"Error in validation batch {batch_idx}: {str(e)}")
-                        continue
-            
-            avg_val_loss = total_val_loss / len(val_loader)
-            
-            # Average F1 Score and Accuracy
-            avg_f1 = f1_score(val_labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-            avg_accuracy = (preds == val_labels).float().mean() 
-            logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}, F1 Score: {avg_f1:.4f}, Accuracy: {avg_accuracy:.4f}')
-            
-            if avg_val_loss < best_val_loss:
-                best_val_loss = avg_val_loss
-                torch.save(self.model.state_dict(), 'best_roberta_model.pth')
-                logger.info("Saved best model.")
         
         # Load the best model
         self.model.load_state_dict(torch.load('best_roberta_model.pth'))
         logger.info("Training completed.")
         
-        # training_args = TrainingArguments(
-        #     output_dir='./results',
-        #     num_train_epochs=num_epochs,
-        #     per_device_train_batch_size=batch_size,
-        #     per_device_eval_batch_size=batch_size,
-        #     learning_rate=learning_rate,
-        #     evaluation_strategy="epoch",
-        #     save_strategy="epoch",
-        #     logging_dir='./logs',
-        #     logging_steps=10,
-        #     load_best_model_at_end=True,
-        #     metric_for_best_model='f1',
-        #     greater_is_better=True
-        # )
-        
-        # trainer = Trainer(
-        #     model=self.model,
-        #     args=training_args,
-        #     train_dataset=train_dataset,
-        #     eval_dataset=val_dataset,
-        #     compute_metrics=self.compute_metrics,
-        # )
-        
-        trainer.train()
+    def validate(self, texts, labels):
+        self.model.eval()
+        dataset = InstructionDataset(texts, labels, self.tokenizer, self.max_length)
+        dataloader = DataLoader(dataset, batch_size=1)
+        predictions = []
+        total_loss = 0
+        with torch.no_grad():
+            for batch in dataloader:
+                input_ids = batch['input_ids'].to(self.device)
+                attention_mask = batch['attention_mask'].to(self.device)
+                labels = batch['labels'].to(self.device)
+                results = self.model(input_ids, attention_mask, labels)
+                loss = results.loss
+                total_loss += loss.item()
+                outputs = results.logits
+                _, preds = torch.max(outputs, dim=1)
+                predictions.extend(preds.cpu().tolist())
+        return self.label_encoder.inverse_transform(predictions), total_loss / len(dataloader)
     
     def compute_metrics(self, p):
         preds = np.argmax(p.predictions, axis=1)
