@@ -7,6 +7,8 @@ from mixture_training.src.moe_controller import MoEController
 from mixture_training.src.model_executor import ModelExecutor
 from mixture_training.src.llm_classifier import LLMClassifier
 from dataset_build.src.model_loader import load_models
+from sklearn.utils.class_weight import compute_class_weight
+import torch
 import numpy as np
 import pickle
 import yaml
@@ -44,6 +46,10 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
     X_train, X_test, y_train, y_test = split_data(features,labels, test_size=0.1)
     print("Data split")
     
+     # Calculate class weights
+    class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
+    class_weights = torch.tensor(class_weights, dtype=torch.float)
+    
     if use_llm:
         print("Initializing LLM Classifier")
         classifier = LLMClassifier()
@@ -57,7 +63,7 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
 
     # Initialize Instruction Classifier
     print(f"Initializing {model_type} Classifier")
-    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=128)
+    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=128, class_weights=class_weights)
     
     if best_model_path:
         print(f"Loaded best model from {best_model_path}")

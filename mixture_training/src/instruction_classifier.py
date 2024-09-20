@@ -10,7 +10,7 @@ import warnings
 from torch.optim import AdamW
 import logging
 from collections import Counter
-from sklearn.utils.class_weight import compute_class_weight
+
 from nltk.corpus import stopwords
 import re
 
@@ -79,38 +79,9 @@ class InstructionDataset(Dataset):
             'labels': torch.tensor(label, dtype=torch.long)
         }
 
-# class TransformerClassifier(nn.Module):
-#     def __init__(self, num_classes, model_type='roberta-large'):
-#         super(TransformerClassifier, self).__init__()
-#         if 'roberta' in model_type:
-#             config = RobertaConfig.from_pretrained(model_type)
-#             self.transformer = RobertaModel.from_pretrained(model_type, config=config)
-#         elif 'bert' in model_type:
-#             config = BertConfig.from_pretrained(model_type)
-#             self.transformer = BertModel.from_pretrained(model_type, config=config)
-#         else:
-#             raise ValueError(f"Unsupported model type: {model_type}")
-        
-#         self.dropout1 = nn.Dropout(0.4)
-#         self.fc1 = nn.Linear(self.transformer.config.hidden_size, 512)
-#         self.bn1 = nn.BatchNorm1d(512)
-#         self.dropout2 = nn.Dropout(0.3)
-#         self.fc2 = nn.Linear(512, num_classes)
-        
-        
-#     def forward(self, input_ids, attention_mask):
-#         outputs = self.transformer(input_ids=input_ids, attention_mask=attention_mask)
-#         pooled_output = (outputs.last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
-#         x = self.dropout1(pooled_output)
-#         x = self.fc1(x)
-#         x = self.bn1(x)
-#         x = F.relu(x)
-#         x = self.dropout2(x)
-#         logits = self.fc2(x)
-#         return logits
 
 class TransformerClassifier(nn.Module):
-    def __init__(self, num_classes, model_type='roberta-large'):
+    def __init__(self, num_classes, model_type='roberta-large', class_weights=None):
         super(TransformerClassifier, self).__init__()
         if 'roberta' in model_type:
             self.model = RobertaForSequenceClassification.from_pretrained(model_type, num_labels=num_classes)
@@ -121,13 +92,18 @@ class TransformerClassifier(nn.Module):
         
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
+        self.class_weights = class_weights.to(self.device)
         
     def forward(self, input_ids, attention_mask, labels=None):
+        if self.class_weights is not None:
+            loss_fct = nn.CrossEntropyLoss(weight=self.class_weights)
+        else:
+            loss_fct = nn.CrossEntropyLoss()
         outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
-        return outputs
+        return loss_fct(outputs.logits, labels), outputs
 
 class InstructionClassifier:
-    def __init__(self, num_classes=20, max_length=128, model_type='roberta-large', best_model_path=None):
+    def __init__(self, num_classes=20, max_length=128, model_type='roberta-large', best_model_path=None, class_weights=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(f"Using device: {self.device}")
         warnings.filterwarnings("ignore", category=FutureWarning)
@@ -139,7 +115,7 @@ class InstructionClassifier:
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
         
-        self.model = TransformerClassifier(num_classes, model_type).to(self.device)
+        self.model = TransformerClassifier(num_classes, model_type, class_weights).to(self.device)
         if best_model_path:
             self.load_model(best_model_path)
         
@@ -168,20 +144,12 @@ class InstructionClassifier:
         self.label_encoder = LabelEncoder()
         encoded_labels = self.label_encoder.fit_transform(labels)
         
-        # Encode labels
-        # self.label_encoder.fit(labels)
-        # encoded_labels = self.label_encoder.transform(labels)
-        
         # Split the data
         train_texts, val_texts, train_labels, val_labels = train_test_split(
             texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
         
-        # Calculate class weights
-        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(train_labels), y=train_labels)
-        class_weights = torch.tensor(class_weights, dtype=torch.float).to(self.device)
-        
-        logger.info(f"Class weights: {class_weights}")
+       
         
         logger.info(f"Train set size: {len(train_texts)}")
         logger.info("Train set class distribution:")
@@ -211,7 +179,7 @@ class InstructionClassifier:
         for epoch in range(num_epochs):
             self.model.train()
             total_train_loss = 0
-            
+            total_train_loss_not_weighted = 0
             for batch_idx, batch in enumerate(tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}")):
                 try:
                     input_ids = batch['input_ids'].to(self.device)
@@ -220,17 +188,17 @@ class InstructionClassifier:
                 
                     self.model.zero_grad()
                     results = self.model(input_ids, attention_mask, labels)
-                    loss = results.loss
-                    # use class_weights
-                    loss = loss * class_weights
-                    outputs = results.logits
+                    loss = results[0]
+                    out = results[1]
+                    outputs = out.logits
+                    loss_not_weighted = out.loss
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5.0)
                     optimizer.step()
                     scheduler.step()
                 
                     total_train_loss += loss.item()
-
+                    total_train_loss_not_weighted += loss_not_weighted.item()
                     if batch_idx % 50 == 0 and batch_idx != 0:
                         # Calculate accuracy and F1 score
                         _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
@@ -238,7 +206,7 @@ class InstructionClassifier:
                         accuracy = (preds == labels).float().mean()
                         f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
                         # print(labels.cpu().numpy(), preds.cpu().numpy())
-                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+                        logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Loss Not Weighted: {loss_not_weighted.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
                     # validte every 20% of the training data
                     if batch_idx % (len(train_loader) * 0.2) == 0 and batch_idx != 0:
