@@ -36,6 +36,40 @@ def extract_features(df):
     df['instruction'] = df['instruction'].astype(str)
     df['processed_instruction'] = df['instruction'].apply(preprocess_text)
     
+    label_mapping = {
+    "information processing and integration": "Technical Assistance & Coding Help",
+    "programming and software development": "Technical Assistance & Coding Help",
+    "data science and analytics": "Technical Assistance & Coding Help",
+    "natural language processing and understanding": "Technical Assistance & Coding Help",
+    "mathematical ability": "Technical Assistance & Coding Help",
+    "logic and reasoning": "Technical Assistance & Coding Help",
+    "analysis and research": "Technical Assistance & Coding Help",
+    
+    "problem solving and support": "Information Retrieval & General Knowledge",
+    "open knowledge q&a": "Information Retrieval & General Knowledge",
+    "life knowledge and skills": "Information Retrieval & General Knowledge",
+    "humanities, history, philosophy, and sociology knowledge": "Information Retrieval & General Knowledge",
+    "stem knowledge": "Information Retrieval & General Knowledge",
+    
+    "literary creation and artistic knowledge": "Creative Content Generation",
+    "creativity and design": "Creative Content Generation",
+    
+    "project and task management": "Professional & Specialized Expertise",
+    "financial, financial and business knowledge": "Professional & Specialized Expertise",
+    "medical, pharmaceutical and health knowledge": "Professional & Specialized Expertise",
+    "psychological knowledge": "Professional & Specialized Expertise",
+    "legal knowledge": "Professional & Specialized Expertise",
+    
+    "linguistic knowledge, multilingual and multicultural understanding": "Communication & Task Management",
+    "education and consulting": "Communication & Task Management",
+    "communication and social media": "Communication & Task Management",
+    "open task completion": "Communication & Task Management",
+    "task generation": "Communication & Task Management"
+    }
+
+    # Apply the mapping to category
+    df['category'] = df['category'].map(label_mapping)
+    
     # # TF-IDF features
     # print("Fitting TF-IDF")
     # tfidf = TfidfVectorizer(max_features=2000, ngram_range=(1, 2))

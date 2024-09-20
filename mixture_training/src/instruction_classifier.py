@@ -148,35 +148,39 @@ class InstructionClassifier:
         logger.info(f"Starting training with {len(texts)} samples")
         
                 # Encode labels
-        class_mapping = {
-            "natural language processing and understanding": "natural language processing and understanding",
-            "information processing and integration": "information processing and integration",
-            "mathematical ability": "mathematical ability",
-            "problem solving and support": "problem solving and support",
-            "programming and software development": "programming and software development",
-            "data science and analytics": "data science and analytics",
-            "open knowledge q&a": "General Knowledge and Q&A",
-            "life knowledge and skills": "General Knowledge and Q&A",
-            "humanities, history, philosophy, and sociology knowledge": "General Knowledge and Q&A",
-            "stem knowledge": "General Knowledge and Q&A",
-            "literary creation and artistic knowledge": "Creative and Artistic Endeavors",
-            "creativity and design": "Creative and Artistic Endeavors",
-            "linguistic knowledge, multilingual and multicultural understanding": "Language and Culture",
-            "financial, financial and business knowledge": "Business and Finance",
-            "project and task management": "Business and Finance",
-            "logic and reasoning": "Analysis and Reasoning",
-            "analysis and research": "Analysis and Reasoning",
-            "medical, pharmaceutical and health knowledge": "Specialized Knowledge",
-            "psychological knowledge": "Specialized Knowledge",
-            "legal knowledge": "Specialized Knowledge",
-            "education and consulting": "Education and Communication",
-            "communication and social media": "Education and Communication",
-            "open task completion": "Task Management",
-            "task generation": "Task Management"
+        label_mapping = {
+            "information processing and integration": "Technical Assistance & Coding Help",
+            "programming and software development": "Technical Assistance & Coding Help",
+            "data science and analytics": "Technical Assistance & Coding Help",
+            "natural language processing and understanding": "Technical Assistance & Coding Help",
+            "mathematical ability": "Technical Assistance & Coding Help",
+            "logic and reasoning": "Technical Assistance & Coding Help",
+            "analysis and research": "Technical Assistance & Coding Help",
+            
+            "problem solving and support": "Information Retrieval & General Knowledge",
+            "open knowledge q&a": "Information Retrieval & General Knowledge",
+            "life knowledge and skills": "Information Retrieval & General Knowledge",
+            "humanities, history, philosophy, and sociology knowledge": "Information Retrieval & General Knowledge",
+            "stem knowledge": "Information Retrieval & General Knowledge",
+            
+            "literary creation and artistic knowledge": "Creative Content Generation",
+            "creativity and design": "Creative Content Generation",
+            
+            "project and task management": "Professional & Specialized Expertise",
+            "financial, financial and business knowledge": "Professional & Specialized Expertise",
+            "medical, pharmaceutical and health knowledge": "Professional & Specialized Expertise",
+            "psychological knowledge": "Professional & Specialized Expertise",
+            "legal knowledge": "Professional & Specialized Expertise",
+            
+            "linguistic knowledge, multilingual and multicultural understanding": "Communication & Task Management",
+            "education and consulting": "Communication & Task Management",
+            "communication and social media": "Communication & Task Management",
+            "open task completion": "Communication & Task Management",
+            "task generation": "Communication & Task Management"
         }
 
         # Apply the mapping to your labels
-        new_labels = [class_mapping[label] for label in labels]
+        new_labels = [label_mapping[label] for label in labels]
 
         # Update your label encoder
         self.label_encoder = LabelEncoder()
