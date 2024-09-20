@@ -209,7 +209,7 @@ class InstructionClassifier:
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Loss Not Weighted: {loss_not_weighted.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
                     # validte every 20% of the training data
-                    if batch_idx % (len(train_loader) * 0.2) == 0 and batch_idx != 0:
+                    if batch_idx % (len(train_loader) * 0.01) == 0 and batch_idx != 0:
                         avg_train_loss = total_train_loss / len(train_loader)
                         val_loss, f1, accuracy = self.validate(val_texts, val_labels)
                         logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, F1 Score: {f1:.4f}, Accuracy: {accuracy:.4f}')
@@ -229,7 +229,7 @@ class InstructionClassifier:
         self.model.load_state_dict(torch.load('best_roberta_model.pth'))
         logger.info("Training completed.")
         
-    def validate(self, texts, labels, class_weights):
+    def validate(self, texts, labels):
         logger.info(f"Validating {len(texts)} samples")
         self.model.eval()
         dataset = InstructionDataset(texts, labels, self.tokenizer, self.max_length)
@@ -244,8 +244,8 @@ class InstructionClassifier:
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['labels'].to(self.device)
                 results = self.model(input_ids, attention_mask, labels)
-                loss = results.loss
-                loss = loss * class_weights
+                loss = results[0]
+                out = results[1]
                 total_loss += loss.item()
                 
                 _, preds = torch.max(F.softmax(results.logits, dim=1), dim=1)
