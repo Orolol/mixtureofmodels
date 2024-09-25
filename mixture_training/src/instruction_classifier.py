@@ -139,7 +139,6 @@ class InstructionClassifier:
         self.calculate_class_distribution(labels)
         logger.info(f"Starting training with {len(texts)} samples")
         
-
         # Update your label encoder
         self.label_encoder = LabelEncoder()
         encoded_labels = self.label_encoder.fit_transform(labels)
@@ -148,8 +147,6 @@ class InstructionClassifier:
         train_texts, val_texts, train_labels, val_labels = train_test_split(
             texts, encoded_labels, test_size=validation_split, random_state=42, stratify=encoded_labels
         )
-        
-       
         
         logger.info(f"Train set size: {len(train_texts)}")
         logger.info("Train set class distribution:")
@@ -205,11 +202,10 @@ class InstructionClassifier:
                         
                         accuracy = (preds == labels).float().mean()
                         f1 = f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
-                        # print(labels.cpu().numpy(), preds.cpu().numpy())
                         logger.info(f"Epoch {epoch + 1}, Batch {batch_idx}, Loss: {loss.item():.4f}, Loss Not Weighted: {loss_not_weighted.item():.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
                     # validte every 20% of the training data
-                    if batch_idx % (len(train_loader) * 0.01) == 0 and batch_idx != 0:
+                    if batch_idx % (len(train_loader) * 0.2) == 0 and batch_idx != 0:
                         avg_train_loss = total_train_loss / len(train_loader)
                         val_loss, f1, accuracy = self.validate(val_texts, val_labels)
                         logger.info(f'Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {val_loss:.4f}, F1 Score: {f1:.4f}, Accuracy: {accuracy:.4f}')
@@ -219,12 +215,10 @@ class InstructionClassifier:
                             torch.save(self.model.state_dict(), 'best_roberta_model.pth')
                             logger.info("Saved best model.")
 
-
                 except Exception as e:
                     logger.error(f"Error in training batch {batch_idx}: {str(e)}")
                     continue
 
-        
         # Load the best model
         self.model.load_state_dict(torch.load('best_roberta_model.pth'))
         logger.info("Training completed.")
