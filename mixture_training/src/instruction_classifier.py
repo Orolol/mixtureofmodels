@@ -240,9 +240,10 @@ class InstructionClassifier:
                 results = self.model(input_ids, attention_mask, labels)
                 loss = results[0]
                 out = results[1]
+                outputs = out.logits
                 total_loss += loss.item()
                 
-                _, preds = torch.max(F.softmax(results.logits, dim=1), dim=1)
+                _, preds = torch.max(F.softmax(outputs, dim=1), dim=1)
                 f1 += f1_score(labels.cpu().numpy(), preds.cpu().numpy(), average='weighted')
                 accuracy += (preds == labels).float().mean()
 
