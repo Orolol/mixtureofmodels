@@ -60,16 +60,16 @@ def main(num_epochs=10, batch_size=16, model_type='roberta-large', best_model_pa
         llm_f1 = f1_score(y_test[:100], y_pred, average='weighted')
         print(f"LLM Classifier Test accuracy: {accuracy:.4f}")
         print(f"LLM Classifier Test F1 Score: {llm_f1:.4f}")
-
-    # Initialize Instruction Classifier
-    print(f"Initializing {model_type} Classifier")
-    classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=256, class_weights=class_weights)
-    
-    if best_model_path:
-        print(f"Loaded best model from {best_model_path}")
-    else:
-        print(f"Training {model_type} Classifier")
-        classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
+    else:   
+        # Initialize Instruction Classifier
+        print(f"Initializing {model_type} Classifier")
+        classifier = InstructionClassifier(num_classes=len(np.unique(labels)), model_type=model_type, best_model_path=best_model_path, max_length=256, class_weights=class_weights)
+        
+        if best_model_path:
+            print(f"Loaded best model from {best_model_path}")
+        else:   
+            print(f"Training {model_type} Classifier")
+            classifier.train(X_train, y_train, num_epochs=num_epochs, batch_size=batch_size)
     
     # Evaluate the model
     y_pred = classifier.predict(X_test)

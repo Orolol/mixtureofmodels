@@ -2,27 +2,18 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 class LLMClassifier:
-    def __init__(self, model_name="microsoft/Phi-3-mini-4k-instruct-gguf"):
+    def __init__(self, model_name="meta-llama/Llama-3.2-1B"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name).to(self.device)
 
     def classify(self, text):
-        prompt = f"""Classify the following instruction into one of these categories:
-1. Natural Language Processing and Understanding
-2. Information Processing and Integration
-3. Mathematical Ability
-4. Problem Solving and Support
-5. Programming and Software Development
-6. Data Science and Analytics
-7. General Knowledge and Q&A
-8. Creative and Artistic Endeavors
-9. Language and Culture
-10. Business and Finance
-11. Analysis and Reasoning
-12. Specialized Knowledge
-13. Education and Communication
-14. Task Management
+        prompt = f"""Classify the following instruction into one of these categories, answer with the category number:
+1. Communication & Task Management
+2. Technical Assistance & Coding Help
+3. Creative Content Generation
+4. Professional & Specialized Expertise
+5. Information Retrieval & General Knowledge
 
 Instruction: {text}
 
